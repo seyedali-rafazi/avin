@@ -1,0 +1,200 @@
+import React, { useMemo, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Music, Play, Shuffle } from 'lucide-react-native';
+import {
+  EmptyState,
+  MiniPlayer,
+  PrimaryButton,
+  ScreenContainer,
+  ScreenHeader,
+  SelectionActionBar,
+  SongOptionsSheet,
+  SongRow,
+  SortPill,
+  SortSheet,
+  sortSongsList,
+} from '@/components';
+import { songRepository } from '@/database/repositories';
+import { useSongSelection } from '@/hooks/useSongSelection';
+import { useLibraryStore, usePlayerStore } from '@/stores';
+import { Colors, Layout, Radii, Spacing } from '@/theme';
+import type { Song, SortField, SortOrder } from '@/types/music';
+import { formatSongCount } from '@/utils/format';
+
+export default function LibraryDetailScreen() {
+  const { type, value, title } = useLocalSearchParams<{
+    type: 'album' | 'artist' | 'genre' | 'folder';
+    value: string;
+    title: string;
+  }>();
+
+  const librarySongs = useLibraryStore((s) => s.songs);
+  const currentSong = usePlayerStore((s) => s.currentSong);
+  const playQueue = usePlayerStore((s) => s.playQueue);
+
+  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const [sortBy, setSortBy] = useState<SortField>('title');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [sortVisible, setSortVisible] = useState(false);
+
+  const rawSongs = useMemo(() => {
+    void librarySongs; // Recompute when library changes (e.g. delete)
+    if (!value) return [];
+    switch (type) {
+      case 'album':
+        return songRepository.getByAlbum(value);
+      case 'artist':
+        return songRepository.getByArtist(value);
+      case 'genre':
+        return songRepository.getByGenre(value);
+      case 'folder':
+        return songRepository.getByFolder(value);
+      default:
+        return [];
+    }
+  }, [type, value, librarySongs]);
+
+  const songs = useMemo(
+    () => sortSongsList(rawSongs, sortBy, sortOrder),
+    [rawSongs, sortBy, sortOrder]
+  );
+
+  const selection = useSongSelection(songs);
+
+  return (
+    <ScreenContainer edges={['top', 'bottom']}>
+      <ScreenHeader
+        title={title ?? value ?? 'Tracks'}
+        subtitle={formatSongCount(songs.length)}
+        onBack={() => router.back()}
+        rightElement={
+          songs.length > 0 ? (
+            <SortPill
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onPress={() => setSortVisible(true)}
+            />
+          ) : undefined
+        }
+      />
+
+      {songs.length === 0 ? (
+        <EmptyState
+          icon={<Music size={28} color={Colors.accent} />}
+          title="No Tracks Available"
+          description="No audio files were found in this collection."
+        />
+      ) : (
+        <FlatList
+          data={songs}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={
+            <View style={styles.actionsRow}>
+              <PrimaryButton
+                label="Play All"
+                icon={<Play size={15} color={Colors.textPrimary} fill={Colors.textPrimary} />}
+                onPress={() => void playQueue(songs, 0, false)}
+                style={styles.flexBtn}
+              />
+              <Pressable
+                onPress={() => void playQueue(songs, 0, true)}
+                style={({ pressed }) => [styles.shuffleBtn, pressed && styles.pressed]}
+              >
+                <Shuffle size={16} color={Colors.accentSecondary} />
+                <Text style={styles.shuffleText}>Shuffle</Text>
+              </Pressable>
+            </View>
+          }
+          renderItem={({ item, index }) => (
+            <SongRow
+              song={item}
+              showAlbum={type !== 'album'}
+              isActive={currentSong?.id === item.id}
+              selectionMode={selection.isSelectionMode}
+              isSelected={selection.selectedIds.has(item.id)}
+              onPress={() => {
+                if (selection.isSelectionMode) {
+                  selection.toggleSelect(item.id);
+                } else {
+                  void playQueue(songs, index, false);
+                }
+              }}
+              onLongPress={() => selection.enterSelection(item.id)}
+              onMorePress={() => setSelectedSong(item)}
+            />
+          )}
+          contentContainerStyle={[
+            styles.listContent,
+            selection.isSelectionMode && styles.listWithSelectionBar,
+          ]}
+        />
+      )}
+
+      {!selection.isSelectionMode ? <MiniPlayer /> : null}
+
+      <SelectionActionBar
+        selectedSongs={selection.selectedSongs}
+        allSelected={selection.allSelected}
+        onToggleSelectAll={() =>
+          selection.allSelected ? selection.clearSelection() : selection.selectAll()
+        }
+        onCancel={selection.clearSelection}
+      />
+
+      <SortSheet
+        visible={sortVisible}
+        onClose={() => setSortVisible(false)}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSelect={(field, order) => {
+          setSortBy(field);
+          setSortOrder(order);
+        }}
+      />
+
+      <SongOptionsSheet
+        song={selectedSong}
+        visible={Boolean(selectedSong)}
+        onClose={() => setSelectedSong(null)}
+      />
+    </ScreenContainer>
+  );
+}
+
+const styles = StyleSheet.create({
+  actionsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: Layout.screenPadding,
+    paddingBottom: Spacing.lg,
+    gap: Spacing.md,
+  },
+  flexBtn: {
+    flex: 1,
+  },
+  shuffleBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: Radii.full,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  shuffleText: {
+    color: Colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  pressed: {
+    opacity: 0.78,
+  },
+  listContent: {
+    paddingBottom: Spacing.xxl,
+  },
+  listWithSelectionBar: {
+    paddingBottom: 150,
+  },
+});
