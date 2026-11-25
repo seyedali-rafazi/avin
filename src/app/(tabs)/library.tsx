@@ -9,15 +9,19 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import {
+  BarChart3,
   Calendar,
   ChevronLeft,
   Clock,
   Disc,
+  Flame,
   Folder,
   FolderPlus,
+  History,
   Music,
   RefreshCw,
   SlidersHorizontal,
+  Sparkles,
   Tag,
   User,
   Users,
@@ -36,7 +40,7 @@ import { useSongSelection } from '@/hooks/useSongSelection';
 import { useLibraryStore, usePlayerStore } from '@/stores';
 import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import type { LibraryCategory, Song, SortField } from '@/types/music';
-import { formatCount, formatNumber, formatSongCount } from '@/utils/format';
+import { formatCount, formatNumber, formatSongCount, localizeMetadata } from '@/utils/format';
 
 export default function LibraryScreen() {
   const songs = useLibraryStore((s) => s.songs);
@@ -45,6 +49,10 @@ export default function LibraryScreen() {
   const genres = useLibraryStore((s) => s.genres);
   const folders = useLibraryStore((s) => s.folders);
   const recentlyAdded = useLibraryStore((s) => s.recentlyAdded);
+  const recentlyPlayed = useLibraryStore((s) => s.recentlyPlayed);
+  const mostPlayed = useLibraryStore((s) => s.mostPlayed);
+  const neverPlayed = useLibraryStore((s) => s.neverPlayed);
+  const listeningStats = useLibraryStore((s) => s.listeningStats);
   const sortBy = useLibraryStore((s) => s.sortBy);
   const sortOrder = useLibraryStore((s) => s.sortOrder);
   const setSorting = useLibraryStore((s) => s.setSorting);
@@ -99,6 +107,24 @@ export default function LibraryScreen() {
       title: 'تازه اضافه‌شده',
       subtitle: formatSongCount(recentlyAdded.length),
       Icon: Clock,
+    },
+    {
+      key: 'recently-played',
+      title: 'اخیراً پخش‌شده',
+      subtitle: formatSongCount(recentlyPlayed.length),
+      Icon: History,
+    },
+    {
+      key: 'most-played',
+      title: 'پرتکرارترین‌ها',
+      subtitle: formatSongCount(mostPlayed.length),
+      Icon: Flame,
+    },
+    {
+      key: 'never-played',
+      title: 'گوش‌نداده‌ها',
+      subtitle: formatSongCount(neverPlayed.length),
+      Icon: Sparkles,
     },
   ];
 
@@ -163,7 +189,39 @@ export default function LibraryScreen() {
           </Pressable>
         </View>
 
-        {/* 6 Category Rows */}
+        {/* Listening Stats Card */}
+        {listeningStats.totalPlays > 0 ? (
+          <View style={styles.statsCard}>
+            <View style={styles.statsHeader}>
+              <BarChart3 size={17} color={Colors.accentSecondary} />
+              <Text style={styles.statsTitle}>آمار گوش دادن شما</Text>
+            </View>
+            <View style={styles.statsGrid}>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>
+                  {formatNumber(listeningStats.totalPlays)}
+                </Text>
+                <Text style={styles.statLabel}>کل پخش‌ها</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>
+                  {formatNumber(Math.max(1, Math.round(listeningStats.totalDurationSeconds / 60)))}
+                </Text>
+                <Text style={styles.statLabel}>دقیقه شنیده</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue} numberOfLines={1}>
+                  {listeningStats.topArtist
+                    ? localizeMetadata(listeningStats.topArtist, 'ناشناس')
+                    : '—'}
+                </Text>
+                <Text style={styles.statLabel}>هنرمند برتر</Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Category & Smart Playlist Rows */}
         <View style={styles.categoryList}>
           {categories.map(({ key, title, subtitle, Icon }) => (
             <Pressable
@@ -388,5 +446,48 @@ const styles = StyleSheet.create({
   },
   recentSection: {
     marginTop: Spacing.xs,
+  },
+  statsCard: {
+    marginHorizontal: Layout.screenPadding,
+    marginBottom: Spacing.lg,
+    backgroundColor: Colors.surface,
+    borderRadius: Radii.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+    padding: Spacing.md,
+    gap: Spacing.md,
+  },
+  statsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  statsTitle: {
+    fontFamily: Fonts.semiBold,
+    fontSize: 13.5,
+    color: Colors.textPrimary,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  statBox: {
+    flex: 1,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: Radii.md,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontFamily: Fonts.bold,
+    fontSize: 14,
+    color: Colors.accentSecondary,
+  },
+  statLabel: {
+    fontFamily: Fonts.regular,
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 2,
   },
 });

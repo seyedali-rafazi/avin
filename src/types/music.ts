@@ -10,8 +10,21 @@ export type LibraryCategory =
   | 'artists'
   | 'genres'
   | 'folders'
-  | 'recently-added';
+  | 'recently-added'
+  | 'recently-played'
+  | 'most-played'
+  | 'never-played';
 export type SearchTab = 'songs' | 'artists' | 'albums' | 'playlists' | 'genres';
+
+export type EqualizerPresetId =
+  | 'flat'
+  | 'pop'
+  | 'rock'
+  | 'bass-boost'
+  | 'vocal'
+  | 'classical'
+  | 'electronic'
+  | 'custom';
 
 export interface Song {
   id: string;
@@ -28,6 +41,19 @@ export interface Song {
   dateAdded: number; // unix timestamp ms
   playCount: number;
   lastPlayedAt: number | null;
+  year?: number | null;
+  lyrics?: string | null;
+  isUserEdited?: boolean;
+}
+
+export interface SongMetadataPatch {
+  title?: string;
+  artist?: string;
+  album?: string;
+  genre?: string;
+  year?: number | null;
+  artworkUri?: string | null;
+  lyrics?: string | null;
 }
 
 export interface Album {
@@ -81,6 +107,26 @@ export interface PlaybackHistoryEntry {
   playedAt: number;
 }
 
+export interface ListeningStats {
+  totalPlays: number;
+  totalSongs: number;
+  playedSongsCount: number;
+  totalDurationSeconds: number;
+  topArtist: string | null;
+  topSong: Song | null;
+}
+
+export interface PersistedPlaybackState {
+  queueIds: string[];
+  originalQueueIds: string[];
+  currentIndex: number;
+  position: number;
+  shuffle: boolean;
+  repeatMode: RepeatMode;
+  playbackRate: number;
+  volume: number;
+}
+
 export interface AppSettings {
   theme: ThemeMode;
   useSystemTheme: boolean;
@@ -89,6 +135,14 @@ export interface AppSettings {
   shuffleByDefault: boolean;
   defaultPlaybackSpeed: number;
   gaplessPlayback: boolean;
+  crossfadeSeconds: number;
+  minSongDuration: number;
+  excludedFolders: string[];
+  pauseOnAudioRouteChange: boolean;
+  equalizerEnabled: boolean;
+  equalizerPreset: EqualizerPresetId;
+  equalizerBands: number[]; // 5 bands in dB (-12..12)
+  bassBoost: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -98,7 +152,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultRepeatMode: 'off',
   shuffleByDefault: false,
   defaultPlaybackSpeed: 1.0,
-  gaplessPlayback: false,
+  gaplessPlayback: true,
+  crossfadeSeconds: 0,
+  minSongDuration: 15,
+  excludedFolders: ['WhatsApp Audio', 'WhatsApp Voice Notes', 'Telegram Audio', 'Recordings', 'CallRecordings'],
+  pauseOnAudioRouteChange: true,
+  equalizerEnabled: false,
+  equalizerPreset: 'flat',
+  equalizerBands: [0, 0, 0, 0, 0],
+  bassBoost: false,
 };
 
 export const PlaylistNameSchema = z
@@ -122,4 +184,6 @@ export const SongInputSchema = z.object({
   artworkUri: z.string().nullable(),
   fileSize: z.number().nonnegative(),
   dateAdded: z.number().nonnegative(),
+  year: z.number().int().nullable().optional(),
+  lyrics: z.string().nullable().optional(),
 });

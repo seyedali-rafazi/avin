@@ -97,6 +97,15 @@ const MIGRATIONS: Migration[] = [
       CREATE UNIQUE INDEX IF NOT EXISTS idx_search_history_query ON search_history(query);
     `,
   },
+  {
+    version: 2,
+    name: 'add_song_year_lyrics_and_user_edited',
+    sql: `
+      ALTER TABLE songs ADD COLUMN year INTEGER;
+      ALTER TABLE songs ADD COLUMN lyrics TEXT;
+      ALTER TABLE songs ADD COLUMN is_user_edited INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];
 
 export function runMigrations(sqlite: SQLiteDatabase): void {

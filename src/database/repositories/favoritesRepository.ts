@@ -41,7 +41,10 @@ export const favoritesRepository = {
       .innerJoin(songs, eq(favorites.songId, songs.id))
       .orderBy(orderExpr)
       .all()
-      .map((r) => r.song);
+      .map((r) => ({
+        ...r.song,
+        isUserEdited: Boolean(r.song.isUserEdited),
+      }));
   },
 
   isFavorite(songId: string): boolean {

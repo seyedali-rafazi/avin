@@ -1,8 +1,33 @@
 import { desc, eq } from 'drizzle-orm';
 import { getDatabase, runInTransaction } from '@/database/client';
 import { searchHistory, settings } from '@/database/schema';
-import { DEFAULT_SETTINGS, type AppSettings } from '@/types/music';
+import {
+  DEFAULT_SETTINGS,
+  type AppSettings,
+  type EqualizerPresetId,
+  type PersistedPlaybackState,
+} from '@/types/music';
 import { generateId } from '@/utils/id';
+
+const PLAYBACK_STATE_KEY = '__persisted_playback_state__';
+
+const VALID_EQ_PRESETS: EqualizerPresetId[] = [
+  'flat',
+  'pop',
+  'rock',
+  'bass-boost',
+  'vocal',
+  'classical',
+  'electronic',
+  'custom',
+];
+
+function serializeSettingValue(value: unknown): string {
+  if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
 
 export const settingsRepository = {
   getAll(): AppSettings {
@@ -23,6 +48,17 @@ export const settingsRepository = {
       return Number.isFinite(parsed) ? parsed : fallback;
     };
 
+    const parseJsonArray = <T>(key: string, fallback: T[]): T[] => {
+      const val = map.get(key);
+      if (!val) return fallback;
+      try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? (parsed as T[]) : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+
     const repeat = map.get('defaultRepeatMode');
     const validRepeat =
       repeat === 'off' || repeat === 'one' || repeat === 'all'
@@ -31,6 +67,18 @@ export const settingsRepository = {
 
     const theme = map.get('theme');
     const validTheme = theme === 'dark' || theme === 'system' ? theme : DEFAULT_SETTINGS.theme;
+
+    const eqPreset = map.get('equalizerPreset') as EqualizerPresetId | undefined;
+    const validEqPreset =
+      eqPreset && VALID_EQ_PRESETS.includes(eqPreset)
+        ? eqPreset
+        : DEFAULT_SETTINGS.equalizerPreset;
+
+    const eqBands = parseJsonArray<number>('equalizerBands', DEFAULT_SETTINGS.equalizerBands);
+    const normalizedBands =
+      eqBands.length === 5 && eqBands.every((n) => typeof n === 'number' && Number.isFinite(n))
+        ? eqBands
+        : DEFAULT_SETTINGS.equalizerBands;
 
     return {
       theme: validTheme,
@@ -43,12 +91,32 @@ export const settingsRepository = {
         DEFAULT_SETTINGS.defaultPlaybackSpeed
       ),
       gaplessPlayback: parseBool('gaplessPlayback', DEFAULT_SETTINGS.gaplessPlayback),
+      crossfadeSeconds: Math.max(
+        0,
+        Math.min(12, parseNum('crossfadeSeconds', DEFAULT_SETTINGS.crossfadeSeconds))
+      ),
+      minSongDuration: Math.max(
+        0,
+        parseNum('minSongDuration', DEFAULT_SETTINGS.minSongDuration)
+      ),
+      excludedFolders: parseJsonArray<string>(
+        'excludedFolders',
+        DEFAULT_SETTINGS.excludedFolders
+      ),
+      pauseOnAudioRouteChange: parseBool(
+        'pauseOnAudioRouteChange',
+        DEFAULT_SETTINGS.pauseOnAudioRouteChange
+      ),
+      equalizerEnabled: parseBool('equalizerEnabled', DEFAULT_SETTINGS.equalizerEnabled),
+      equalizerPreset: validEqPreset,
+      equalizerBands: normalizedBands,
+      bassBoost: parseBool('bassBoost', DEFAULT_SETTINGS.bassBoost),
     };
   },
 
   set<K extends keyof AppSettings>(key: K, value: AppSettings[K]): void {
     const db = getDatabase();
-    const serialized = String(value);
+    const serialized = serializeSettingValue(value);
     db.insert(settings)
       .values({ key, value: serialized })
       .onConflictDoUpdate({
@@ -63,7 +131,7 @@ export const settingsRepository = {
     runInTransaction(() => {
       for (const [key, value] of Object.entries(partial)) {
         if (value === undefined) continue;
-        const serialized = String(value);
+        const serialized = serializeSettingValue(value);
         db.insert(settings)
           .values({ key, value: serialized })
           .onConflictDoUpdate({
@@ -73,6 +141,43 @@ export const settingsRepository = {
           .run();
       }
     });
+  },
+
+  getPersistedPlaybackState(): PersistedPlaybackState | null {
+    try {
+      const db = getDatabase();
+      const row = db
+        .select({ value: settings.value })
+        .from(settings)
+        .where(eq(settings.key, PLAYBACK_STATE_KEY))
+        .get();
+      if (!row?.value) return null;
+      const parsed = JSON.parse(row.value) as PersistedPlaybackState;
+      if (!Array.isArray(parsed.queueIds)) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  },
+
+  savePersistedPlaybackState(state: PersistedPlaybackState | null): void {
+    try {
+      const db = getDatabase();
+      if (!state || state.queueIds.length === 0) {
+        db.delete(settings).where(eq(settings.key, PLAYBACK_STATE_KEY)).run();
+        return;
+      }
+      const serialized = JSON.stringify(state);
+      db.insert(settings)
+        .values({ key: PLAYBACK_STATE_KEY, value: serialized })
+        .onConflictDoUpdate({
+          target: settings.key,
+          set: { value: serialized },
+        })
+        .run();
+    } catch {
+      // Non-fatal persistence error
+    }
   },
 
   getSearchHistory(limit = 15): string[] {

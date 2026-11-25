@@ -1,11 +1,21 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { ListMusic, Pause, Play } from 'lucide-react-native';
 import { AlbumArtwork } from '@/components/music/AlbumArtwork';
 import { usePlayerStore } from '@/stores';
 import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import { localizeMetadata } from '@/utils/format';
+
+const SWIPE_THRESHOLD = 48;
 
 export function MiniPlayer() {
   const currentSong = usePlayerStore((s) => s.currentSong);
@@ -13,6 +23,42 @@ export function MiniPlayer() {
   const position = usePlayerStore((s) => s.position);
   const duration = usePlayerStore((s) => s.duration);
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause);
+  const nextTrack = usePlayerStore((s) => s.nextTrack);
+  const previousTrack = usePlayerStore((s) => s.previousTrack);
+
+  const translateX = useSharedValue(0);
+
+  const triggerNext = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void nextTrack(false);
+  };
+
+  const triggerPrev = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void previousTrack();
+  };
+
+  const swipeGesture = Gesture.Pan()
+    .activeOffsetX([-16, 16])
+    .failOffsetY([-12, 12])
+    .onUpdate((e) => {
+      translateX.value = Math.max(-72, Math.min(72, e.translationX));
+    })
+    .onEnd((e) => {
+      if (e.translationX <= -SWIPE_THRESHOLD) {
+        runOnJS(triggerNext)();
+      } else if (e.translationX >= SWIPE_THRESHOLD) {
+        runOnJS(triggerPrev)();
+      }
+      translateX.value = withSpring(0, { damping: 20, stiffness: 240 });
+    })
+    .onFinalize(() => {
+      translateX.value = withSpring(0, { damping: 20, stiffness: 240 });
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   if (!currentSong) {
     return null;
@@ -24,65 +70,75 @@ export function MiniPlayer() {
 
   return (
     <View style={styles.wrapper}>
-      <Pressable
-        onPress={() => router.push('/player')}
-        style={({ pressed }) => [styles.container, pressed && styles.pressed]}
-        accessibilityRole="button"
-        accessibilityLabel={`در حال پخش: ${currentSong.title} از ${artistName}. باز کردن پخش‌کننده.`}
-      >
-        <View style={styles.contentRow}>
-          <AlbumArtwork
-            uri={currentSong.artworkUri}
-            size={Layout.miniPlayerArtwork}
-            borderRadius={Radii.sm}
-          />
+      <GestureDetector gesture={swipeGesture}>
+        <Animated.View style={animatedStyle}>
+          <Pressable
+            onPress={() => router.push('/player')}
+            style={({ pressed }) => [styles.container, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={`در حال پخش: ${currentSong.title} از ${artistName}. باز کردن پخش‌کننده.`}
+          >
+            <View style={styles.contentRow}>
+              <AlbumArtwork
+                uri={currentSong.artworkUri}
+                size={Layout.miniPlayerArtwork}
+                borderRadius={Radii.sm}
+              />
 
-          <View style={styles.meta}>
-            <Text style={styles.title} numberOfLines={1}>
-              {currentSong.title}
-            </Text>
-            <Text style={styles.artist} numberOfLines={1}>
-              {artistName}
-            </Text>
-          </View>
+              <View style={styles.meta}>
+                <Text style={styles.title} numberOfLines={1}>
+                  {currentSong.title}
+                </Text>
+                <Text style={styles.artist} numberOfLines={1}>
+                  {artistName}
+                </Text>
+              </View>
 
-          <View style={styles.actions}>
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                togglePlayPause();
-              }}
-              hitSlop={10}
-              style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}
-              accessibilityRole="button"
-              accessibilityLabel={isPlaying ? 'توقف' : 'پخش'}
-            >
-              {isPlaying ? (
-                <Pause size={21} color={Colors.textPrimary} fill={Colors.textPrimary} />
-              ) : (
-                <Play size={21} color={Colors.textPrimary} fill={Colors.textPrimary} />
-              )}
-            </Pressable>
+              <View style={styles.actions}>
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    togglePlayPause();
+                  }}
+                  hitSlop={10}
+                  style={({ pressed }) => [
+                    styles.actionBtn,
+                    pressed && styles.actionPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={isPlaying ? 'توقف' : 'پخش'}
+                >
+                  {isPlaying ? (
+                    <Pause size={21} color={Colors.textPrimary} fill={Colors.textPrimary} />
+                  ) : (
+                    <Play size={21} color={Colors.textPrimary} fill={Colors.textPrimary} />
+                  )}
+                </Pressable>
 
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                router.push('/queue');
-              }}
-              hitSlop={10}
-              style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}
-              accessibilityRole="button"
-              accessibilityLabel="باز کردن صف پخش"
-            >
-              <ListMusic size={21} color={Colors.textPrimary} />
-            </Pressable>
-          </View>
-        </View>
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    router.push('/queue');
+                  }}
+                  hitSlop={10}
+                  style={({ pressed }) => [
+                    styles.actionBtn,
+                    pressed && styles.actionPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="باز کردن صف پخش"
+                >
+                  <ListMusic size={21} color={Colors.textPrimary} />
+                </Pressable>
+              </View>
+            </View>
 
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-        </View>
-      </Pressable>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+            </View>
+          </Pressable>
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 }

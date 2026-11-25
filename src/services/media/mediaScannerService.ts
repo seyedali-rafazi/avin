@@ -2,11 +2,16 @@ import * as MediaLibraryLegacy from 'expo-media-library/legacy';
 import * as DocumentPicker from 'expo-document-picker';
 import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
-import { songRepository, type NewSongInput } from '@/database/repositories';
+import {
+  settingsRepository,
+  songRepository,
+  type NewSongInput,
+} from '@/database/repositories';
 import {
   isSupportedAudioFile,
   parseMetadataFromFilename,
 } from '@/services/metadata/audioMetadataParser';
+import { extractAudioTags } from '@/services/metadata/binaryTagReader';
 import { stableId } from '@/utils/id';
 
 export interface ScanProgress {
@@ -22,6 +27,7 @@ export interface ScanResult {
   added: number;
   updated: number;
   removed: number;
+  filteredOut?: number;
   error?: string;
 }
 
@@ -33,6 +39,18 @@ function getImportedDirectory(): Directory {
     dir.create({ intermediates: true, idempotent: true });
   }
   return dir;
+}
+
+function isFolderExcluded(folderPath: string, fileUri: string, excludedFolders: string[]): boolean {
+  if (excludedFolders.length === 0) return false;
+  const normalizedFolder = folderPath.toLowerCase();
+  const normalizedUri = decodeURIComponent(fileUri).toLowerCase();
+
+  return excludedFolders.some((pattern) => {
+    const clean = pattern.trim().toLowerCase();
+    if (!clean) return false;
+    return normalizedFolder.includes(clean) || normalizedUri.includes(`/${clean}/`);
+  });
 }
 
 export const mediaScannerService = {
@@ -58,7 +76,8 @@ export const mediaScannerService = {
         added: 0,
         updated: 0,
         removed: 0,
-        error: 'اسکن خودکار حافظه فقط در اندروید و iOS در دسترس است. برای افزودن موسیقی از گزینه «افزودن فایل» استفاده کنید.',
+        error:
+          'اسکن خودکار حافظه فقط در اندروید و iOS در دسترس است. برای افزودن موسیقی از گزینه «افزودن فایل» استفاده کنید.',
       };
     }
 
@@ -71,9 +90,14 @@ export const mediaScannerService = {
           added: 0,
           updated: 0,
           removed: 0,
-          error: 'مجوز دسترسی به فایل‌های صوتی رد شد. لطفاً دسترسی حافظه را از تنظیمات گوشی فعال کنید.',
+          error:
+            'مجوز دسترسی به فایل‌های صوتی رد شد. لطفاً دسترسی حافظه را از تنظیمات گوشی فعال کنید.',
         };
       }
+
+      const appSettings = settingsRepository.getAll();
+      const minDuration = appSettings.minSongDuration;
+      const excludedFolders = appSettings.excludedFolders;
 
       const discovered: NewSongInput[] = [];
       const validUris = new Set<string>();
@@ -81,6 +105,7 @@ export const mediaScannerService = {
       let after: string | undefined;
       let hasNextPage = true;
       let totalExpected = 0;
+      let filteredOut = 0;
 
       while (hasNextPage) {
         const page = await MediaLibraryLegacy.getAssetsAsync({
@@ -110,6 +135,20 @@ export const mediaScannerService = {
               ? asset.duration
               : 0;
 
+          // Filter out short audio clips (e.g. voice notes, notification sounds)
+          if (minDuration > 0 && duration > 0 && duration < minDuration) {
+            filteredOut += 1;
+            continue;
+          }
+
+          const preliminary = parseMetadataFromFilename(filename, localUri);
+
+          // Filter out blacklisted folders
+          if (isFolderExcluded(preliminary.folder, localUri, excludedFolders)) {
+            filteredOut += 1;
+            continue;
+          }
+
           const timestamp =
             typeof asset.modificationTime === 'number' && asset.modificationTime > 0
               ? asset.modificationTime
@@ -127,7 +166,14 @@ export const mediaScannerService = {
             // File size is optional metadata
           }
 
-          const parsed = parseMetadataFromFilename(filename, localUri);
+          // Extract real embedded ID3 / M4A / FLAC tags & artwork
+          const tags = await extractAudioTags(localUri, { extractArtwork: true });
+          const parsed = parseMetadataFromFilename(filename, localUri, {
+            title: tags.title,
+            artist: tags.artist,
+            album: tags.album,
+            genre: tags.genre,
+          });
           const albumId = stableId('alb', parsed.album);
 
           discovered.push({
@@ -140,9 +186,11 @@ export const mediaScannerService = {
             folder: parsed.folder,
             duration,
             fileUri: localUri,
-            artworkUri: null,
+            artworkUri: tags.artworkUri ?? null,
             fileSize,
             dateAdded: timestamp,
+            year: tags.year ?? null,
+            lyrics: tags.lyrics ?? null,
           });
           validUris.add(localUri);
         }
@@ -161,7 +209,7 @@ export const mediaScannerService = {
       }
 
       // Also include any locally imported files stored in app documents
-      const importedSongs = this.scanImportedDirectory();
+      const importedSongs = await this.scanImportedDirectory();
       for (const song of importedSongs) {
         if (!validUris.has(song.fileUri)) {
           discovered.push(song);
@@ -182,6 +230,7 @@ export const mediaScannerService = {
         added,
         updated,
         removed,
+        filteredOut,
       };
     } catch (err) {
       const rawMessage =
@@ -214,7 +263,7 @@ export const mediaScannerService = {
     }
   },
 
-  scanImportedDirectory(): NewSongInput[] {
+  async scanImportedDirectory(): Promise<NewSongInput[]> {
     if (Platform.OS === 'web') return [];
     try {
       const dir = getImportedDirectory();
@@ -223,7 +272,13 @@ export const mediaScannerService = {
 
       for (const entry of entries) {
         if (entry instanceof File && isSupportedAudioFile(entry.name)) {
-          const parsed = parseMetadataFromFilename(entry.name, entry.uri);
+          const tags = await extractAudioTags(entry.uri, { extractArtwork: true });
+          const parsed = parseMetadataFromFilename(entry.name, entry.uri, {
+            title: tags.title,
+            artist: tags.artist,
+            album: tags.album,
+            genre: tags.genre,
+          });
           results.push({
             id: stableId('song', entry.uri),
             title: parsed.title,
@@ -234,9 +289,11 @@ export const mediaScannerService = {
             folder: 'واردشده',
             duration: 0,
             fileUri: entry.uri,
-            artworkUri: null,
+            artworkUri: tags.artworkUri ?? null,
             fileSize: typeof entry.size === 'number' ? entry.size : 0,
             dateAdded: Date.now(),
+            year: tags.year ?? null,
+            lyrics: tags.lyrics ?? null,
           });
         }
       }
@@ -265,11 +322,11 @@ export const mediaScannerService = {
         let targetUri = asset.uri;
         if (importDir && Platform.OS !== 'web') {
           try {
-            const safeName = asset.name.replace(/[^a-zA-Z0-9._\-\s]/g, '_');
+            const safeName = asset.name.replace(/[^a-zA-Z0-9._\-\s\u0600-\u06FF]/g, '_');
             const sourceFile = new File(asset.uri);
             const destFile = new File(importDir, safeName);
             if (!destFile.exists) {
-              sourceFile.copy(destFile);
+              sourceFile.copySync(destFile);
             }
             targetUri = destFile.uri;
           } catch {
@@ -277,7 +334,13 @@ export const mediaScannerService = {
           }
         }
 
-        const parsed = parseMetadataFromFilename(asset.name, targetUri);
+        const tags = await extractAudioTags(targetUri, { extractArtwork: true });
+        const parsed = parseMetadataFromFilename(asset.name, targetUri, {
+          title: tags.title,
+          artist: tags.artist,
+          album: tags.album,
+          genre: tags.genre,
+        });
         items.push({
           id: stableId('song', targetUri),
           title: parsed.title,
@@ -285,12 +348,14 @@ export const mediaScannerService = {
           album: parsed.album,
           albumId: stableId('alb', parsed.album),
           genre: parsed.genre,
-          folder: 'Imported',
+          folder: 'واردشده',
           duration: 0,
           fileUri: targetUri,
-          artworkUri: null,
+          artworkUri: tags.artworkUri ?? null,
           fileSize: asset.size ?? 0,
           dateAdded: Date.now(),
+          year: tags.year ?? null,
+          lyrics: tags.lyrics ?? null,
         });
       }
 

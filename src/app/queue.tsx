@@ -1,31 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
-  FlatList,
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
 import {
-  AudioLines,
-  ChevronDown,
-  ChevronUp,
   ListMusic,
+  ListPlus,
   Shuffle,
   Trash2,
   X,
 } from 'lucide-react-native';
 import {
-  AlbumArtwork,
+  AppModal,
+  DraggableSongList,
   EmptyState,
   IconButton,
+  PrimaryButton,
   ScreenContainer,
 } from '@/components';
-import { usePlayerStore } from '@/stores';
+import { usePlayerStore, usePlaylistStore } from '@/stores';
 import { Colors, Fonts, Layout, Radii, Spacing, Typography } from '@/theme';
-import { localizeMetadata } from '@/utils/format';
+import { formatSongCount } from '@/utils/format';
 
 export default function QueueScreen() {
   const queue = usePlayerStore((s) => s.queue);
@@ -35,6 +35,11 @@ export default function QueueScreen() {
   const reorderQueue = usePlayerStore((s) => s.reorderQueue);
   const shuffleCurrentQueue = usePlayerStore((s) => s.shuffleCurrentQueue);
   const clearQueue = usePlayerStore((s) => s.clearQueue);
+
+  const createPlaylistWithSongs = usePlaylistStore((s) => s.createPlaylistWithSongs);
+
+  const [saveModalVisible, setSaveModalVisible] = useState(false);
+  const [playlistName, setPlaylistName] = useState('');
 
   const handleClearQueue = () => {
     Alert.alert(
@@ -54,16 +59,50 @@ export default function QueueScreen() {
     );
   };
 
+  const handleSaveAsPlaylist = () => {
+    const trimmed = playlistName.trim();
+    if (!trimmed) {
+      Alert.alert('نام نامعتبر', 'لطفاً یک نام برای پلی‌لیست وارد کنید.');
+      return;
+    }
+    const songIds = queue.map((s) => s.id);
+    const created = createPlaylistWithSongs(trimmed, songIds);
+    setSaveModalVisible(false);
+    setPlaylistName('');
+    if (created) {
+      Alert.alert(
+        'ذخیره شد',
+        `پلی‌لیست «${created.name}» با ${formatSongCount(songIds.length)} ساخته شد.`
+      );
+    }
+  };
+
   return (
     <ScreenContainer edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={Typography.greeting}>صف پخش</Text>
-        <IconButton
-          icon={<X size={22} color={Colors.textPrimary} />}
-          onPress={() => router.back()}
-          accessibilityLabel="بستن صف پخش"
-        />
+        <View style={styles.headerMeta}>
+          <Text style={Typography.greeting}>صف پخش</Text>
+          {queue.length > 0 ? (
+            <Text style={styles.headerSub}>
+              {formatSongCount(queue.length)} • برای تغییر ترتیب، دستگیره را بکشید
+            </Text>
+          ) : null}
+        </View>
+        <View style={styles.headerActions}>
+          {queue.length > 0 ? (
+            <IconButton
+              icon={<ListPlus size={21} color={Colors.accentSecondary} />}
+              onPress={() => setSaveModalVisible(true)}
+              accessibilityLabel="ذخیره صف به‌عنوان پلی‌لیست"
+            />
+          ) : null}
+          <IconButton
+            icon={<X size={22} color={Colors.textPrimary} />}
+            onPress={() => router.back()}
+            accessibilityLabel="بستن صف پخش"
+          />
+        </View>
       </View>
 
       {queue.length === 0 ? (
@@ -74,80 +113,12 @@ export default function QueueScreen() {
         />
       ) : (
         <>
-          <FlatList
-            data={queue}
-            keyExtractor={(item, idx) => `${item.id}-${idx}`}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item, index }) => {
-              const isCurrent = index === currentIndex;
-              return (
-                <Pressable
-                  onPress={() => void playSongAtIndex(index)}
-                  style={({ pressed }) => [
-                    styles.row,
-                    isCurrent && styles.currentRow,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  {isCurrent ? <View style={styles.activeAccentBar} /> : null}
-
-                  <AlbumArtwork
-                    uri={item.artworkUri}
-                    size={46}
-                    borderRadius={Radii.sm}
-                  />
-
-                  <View style={styles.info}>
-                    <Text
-                      style={[styles.title, isCurrent && styles.currentTitle]}
-                      numberOfLines={1}
-                    >
-                      {item.title}
-                    </Text>
-                    <Text style={styles.artist} numberOfLines={1}>
-                      {localizeMetadata(item.artist, 'هنرمند ناشناس')}
-                    </Text>
-                  </View>
-
-                  {isCurrent ? (
-                    <View style={styles.equalizerWrap}>
-                      <AudioLines size={20} color={Colors.accent} />
-                    </View>
-                  ) : (
-                    <View style={styles.rowActions}>
-                      {index > 0 ? (
-                        <Pressable
-                          onPress={() => reorderQueue(index, index - 1)}
-                          hitSlop={8}
-                          style={styles.reorderBtn}
-                          accessibilityLabel={`انتقال ${item.title} به بالا`}
-                        >
-                          <ChevronUp size={16} color={Colors.textSecondary} />
-                        </Pressable>
-                      ) : null}
-                      {index < queue.length - 1 ? (
-                        <Pressable
-                          onPress={() => reorderQueue(index, index + 1)}
-                          hitSlop={8}
-                          style={styles.reorderBtn}
-                          accessibilityLabel={`انتقال ${item.title} به پایین`}
-                        >
-                          <ChevronDown size={16} color={Colors.textSecondary} />
-                        </Pressable>
-                      ) : null}
-                      <Pressable
-                        onPress={() => removeFromQueue(index)}
-                        hitSlop={8}
-                        style={styles.reorderBtn}
-                        accessibilityLabel={`حذف ${item.title} از صف پخش`}
-                      >
-                        <X size={15} color={Colors.textMuted} />
-                      </Pressable>
-                    </View>
-                  )}
-                </Pressable>
-              );
-            }}
+          <DraggableSongList
+            songs={queue}
+            currentIndex={currentIndex}
+            onPressSong={(idx) => void playSongAtIndex(idx)}
+            onReorder={reorderQueue}
+            onRemoveSong={removeFromQueue}
           />
 
           {/* Bottom Shuffle & Clear Queue Buttons */}
@@ -170,6 +141,39 @@ export default function QueueScreen() {
           </View>
         </>
       )}
+
+      <AppModal
+        visible={saveModalVisible}
+        onClose={() => setSaveModalVisible(false)}
+        title="ذخیره صف به‌عنوان پلی‌لیست"
+      >
+        <TextInput
+          value={playlistName}
+          onChangeText={setPlaylistName}
+          placeholder="نام پلی‌لیست جدید..."
+          placeholderTextColor={Colors.textMuted}
+          style={styles.input}
+          autoFocus
+          maxLength={60}
+          selectionColor={Colors.accent}
+          returnKeyType="done"
+          onSubmitEditing={handleSaveAsPlaylist}
+          textAlign="right"
+        />
+        <View style={styles.modalActions}>
+          <Pressable
+            onPress={() => setSaveModalVisible(false)}
+            style={styles.cancelBtn}
+          >
+            <Text style={styles.cancelText}>انصراف</Text>
+          </Pressable>
+          <PrimaryButton
+            label="ذخیره پلی‌لیست"
+            size="sm"
+            onPress={handleSaveAsPlaylist}
+          />
+        </View>
+      </AppModal>
     </ScreenContainer>
   );
 }
@@ -183,75 +187,23 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.md,
   },
-  listContent: {
-    paddingHorizontal: Layout.screenPadding,
-    paddingBottom: Spacing.lg,
-    gap: 6,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-    borderRadius: Radii.lg,
-    gap: Spacing.md,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  currentRow: {
-    backgroundColor: Colors.surfaceHighlight,
-  },
-  activeAccentBar: {
-    position: 'absolute',
-    right: 0,
-    top: 8,
-    bottom: 8,
-    width: 3,
-    borderRadius: 2,
-    backgroundColor: Colors.accent,
-  },
-  pressed: {
-    opacity: 0.78,
-  },
-  info: {
+  headerMeta: {
     flex: 1,
     alignItems: 'flex-start',
   },
-  title: {
-    fontFamily: Fonts.medium,
-    fontSize: 14,
-    lineHeight: 22,
-    color: Colors.textPrimary,
-    marginBottom: 2,
-    textAlign: 'right',
-    writingDirection: 'rtl',
-  },
-  currentTitle: {
-    fontFamily: Fonts.semiBold,
-    color: Colors.accentSecondary,
-  },
-  artist: {
+  headerSub: {
     fontFamily: Fonts.regular,
     fontSize: 11.5,
-    lineHeight: 18,
     color: Colors.textSecondary,
-    textAlign: 'right',
-    writingDirection: 'rtl',
+    marginTop: 2,
   },
-  equalizerWrap: {
-    paddingLeft: 4,
-  },
-  rowActions: {
+  headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
-  reorderBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+  pressed: {
+    opacity: 0.78,
   },
   footer: {
     flexDirection: 'row',
@@ -279,5 +231,34 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontSize: 13.5,
     lineHeight: 20,
+  },
+  input: {
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: Radii.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    fontFamily: Fonts.regular,
+    color: Colors.textPrimary,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.lg,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  cancelBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+  },
+  cancelText: {
+    fontFamily: Fonts.medium,
+    color: Colors.textSecondary,
+    fontSize: 13.5,
   },
 });

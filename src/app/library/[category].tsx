@@ -40,6 +40,9 @@ const TITLES: Record<LibraryCategory, string> = {
   genres: 'سبک‌ها',
   folders: 'پوشه‌ها',
   'recently-added': 'تازه اضافه‌شده',
+  'recently-played': 'اخیراً پخش‌شده',
+  'most-played': 'پرتکرارترین‌ها',
+  'never-played': 'گوش‌نداده‌ها',
 };
 
 export default function LibraryCategoryScreen() {
@@ -53,6 +56,9 @@ export default function LibraryCategoryScreen() {
   const genres = useLibraryStore((s) => s.genres);
   const folders = useLibraryStore((s) => s.folders);
   const recentlyAdded = useLibraryStore((s) => s.recentlyAdded);
+  const recentlyPlayed = useLibraryStore((s) => s.recentlyPlayed);
+  const mostPlayed = useLibraryStore((s) => s.mostPlayed);
+  const neverPlayed = useLibraryStore((s) => s.neverPlayed);
   const sortBy = useLibraryStore((s) => s.sortBy);
   const sortOrder = useLibraryStore((s) => s.sortOrder);
   const setSorting = useLibraryStore((s) => s.setSorting);
@@ -66,15 +72,31 @@ export default function LibraryCategoryScreen() {
   const [recentSortOrder, setRecentSortOrder] = useState<SortOrder>('desc');
 
   const isSongCategory =
-    activeCategory === 'all-songs' || activeCategory === 'recently-added';
+    activeCategory === 'all-songs' ||
+    activeCategory === 'recently-added' ||
+    activeCategory === 'recently-played' ||
+    activeCategory === 'most-played' ||
+    activeCategory === 'never-played';
 
   const activeSongList = useMemo(() => {
     if (activeCategory === 'all-songs') return songs;
     if (activeCategory === 'recently-added') {
       return sortSongsList(recentlyAdded, recentSortBy, recentSortOrder);
     }
+    if (activeCategory === 'recently-played') return recentlyPlayed;
+    if (activeCategory === 'most-played') return mostPlayed;
+    if (activeCategory === 'never-played') return neverPlayed;
     return [];
-  }, [activeCategory, songs, recentlyAdded, recentSortBy, recentSortOrder]);
+  }, [
+    activeCategory,
+    songs,
+    recentlyAdded,
+    recentlyPlayed,
+    mostPlayed,
+    neverPlayed,
+    recentSortBy,
+    recentSortOrder,
+  ]);
 
   const selection = useSongSelection(activeSongList);
 

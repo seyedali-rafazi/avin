@@ -7,6 +7,14 @@ const mockPlaylists: {
   songCount: number;
 }[] = [];
 
+jest.mock('@/services/audio/audioEngine', () => ({
+  audioEngine: {
+    setGaplessPlayback: jest.fn(),
+    setCrossfadeSeconds: jest.fn(),
+    setEqGainMultiplier: jest.fn(),
+  },
+}));
+
 jest.mock('@/database/repositories', () => ({
   playlistRepository: {
     getAll: jest.fn(() => [...mockPlaylists]),
@@ -26,6 +34,7 @@ jest.mock('@/database/repositories', () => ({
       const found = mockPlaylists.find((p) => p.id === id);
       if (found) found.name = name;
     }),
+    updateArtwork: jest.fn(),
     delete: jest.fn((id: string) => {
       const idx = mockPlaylists.findIndex((p) => p.id === id);
       if (idx >= 0) mockPlaylists.splice(idx, 1);
@@ -43,9 +52,18 @@ jest.mock('@/database/repositories', () => ({
       defaultRepeatMode: 'off',
       shuffleByDefault: false,
       defaultPlaybackSpeed: 1.0,
-      gaplessPlayback: false,
+      gaplessPlayback: true,
+      crossfadeSeconds: 0,
+      minSongDuration: 15,
+      excludedFolders: [],
+      pauseOnAudioRouteChange: true,
+      equalizerEnabled: false,
+      equalizerPreset: 'flat',
+      equalizerBands: [0, 0, 0, 0, 0],
+      bassBoost: false,
     })),
     set: jest.fn(),
+    setMany: jest.fn(),
   },
 }));
 

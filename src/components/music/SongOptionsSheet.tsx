@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Share, StyleSheet, Text, View } from 'react-native';
 import {
+  BellRing,
+  Edit3,
   Heart,
   Info,
   ListEnd,
@@ -10,11 +12,18 @@ import {
   Trash2,
 } from 'lucide-react-native';
 import { AddToPlaylistSheet } from '@/components/music/AddToPlaylistSheet';
+import { EditSongModal } from '@/components/music/EditSongModal';
 import { BottomSheet, type SheetOption } from '@/components/ui/BottomSheet';
+import { fileActionsService } from '@/services/media/fileActionsService';
 import { useLibraryStore, usePlayerStore } from '@/stores';
 import { Colors, Spacing, Typography } from '@/theme';
 import type { Song } from '@/types/music';
-import { formatDuration, formatFileSize, localizeMetadata } from '@/utils/format';
+import {
+  formatDuration,
+  formatFileSize,
+  formatNumber,
+  localizeMetadata,
+} from '@/utils/format';
 
 interface SongOptionsSheetProps {
   song: Song | null;
@@ -31,11 +40,16 @@ export function SongOptionsSheet({
 }: SongOptionsSheetProps) {
   const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
 
   const playNext = usePlayerStore((s) => s.playNext);
   const addToQueue = usePlayerStore((s) => s.addToQueue);
+  const removeSongById = usePlayerStore((s) => s.removeSongById);
+
   const isFavorite = useLibraryStore((s) => (song ? s.favoriteIds.has(song.id) : false));
   const toggleFavorite = useLibraryStore((s) => s.toggleFavorite);
+  const deleteSong = useLibraryStore((s) => s.deleteSong);
+  const deleteSongFromDevice = useLibraryStore((s) => s.deleteSongFromDevice);
 
   if (!song) return null;
 
@@ -50,6 +64,36 @@ export function SongOptionsSheet({
       message: `${song.title} — ${artistName}`,
       url: song.fileUri,
     });
+  };
+
+  const handleDeleteSong = () => {
+    Alert.alert(
+      'حذف آهنگ',
+      `می‌خواهید «${song.title}» را فقط از کتابخانه برنامه حذف کنید یا فایل اصلی آن را نیز از حافظه دستگاه پاک کنید؟`,
+      [
+        { text: 'انصراف', style: 'cancel' },
+        {
+          text: 'فقط از کتابخانه',
+          onPress: () => {
+            removeSongById(song.id);
+            deleteSong(song.id);
+          },
+        },
+        {
+          text: 'حذف دائمی از حافظه',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              removeSongById(song.id);
+              const res = await deleteSongFromDevice(song);
+              if (res.message) {
+                Alert.alert('حذف فایل', res.message);
+              }
+            })();
+          },
+        },
+      ]
+    );
   };
 
   const options: SheetOption[] = [
@@ -80,6 +124,16 @@ export function SongOptionsSheet({
       onPress: () => setShowPlaylistPicker(true),
     },
     {
+      label: 'ویرایش مشخصات و کاور',
+      icon: <Edit3 size={19} color={Colors.textPrimary} />,
+      onPress: () => setShowEditor(true),
+    },
+    {
+      label: 'تنظیم به‌عنوان زنگ گوشی',
+      icon: <BellRing size={19} color={Colors.textPrimary} />,
+      onPress: () => void fileActionsService.setAsRingtone(song),
+    },
+    {
       label: 'اشتراک‌گذاری',
       icon: <Share2 size={19} color={Colors.textPrimary} />,
       onPress: handleShare,
@@ -97,6 +151,13 @@ export function SongOptionsSheet({
       icon: <Trash2 size={19} color={Colors.danger} />,
       destructive: true,
       onPress: onRemoveFromPlaylist,
+    });
+  } else {
+    options.push({
+      label: 'حذف آهنگ',
+      icon: <Trash2 size={19} color={Colors.danger} />,
+      destructive: true,
+      onPress: handleDeleteSong,
     });
   }
 
@@ -116,6 +177,12 @@ export function SongOptionsSheet({
         onClose={() => setShowPlaylistPicker(false)}
       />
 
+      <EditSongModal
+        song={song}
+        visible={showEditor}
+        onClose={() => setShowEditor(false)}
+      />
+
       <BottomSheet
         visible={showInfo}
         onClose={() => setShowInfo(false)}
@@ -126,7 +193,9 @@ export function SongOptionsSheet({
           <InfoRow label="هنرمند" value={artistName} />
           <InfoRow label="آلبوم" value={albumName} />
           <InfoRow label="سبک" value={genreName} />
+          {song.year ? <InfoRow label="سال" value={formatNumber(song.year)} /> : null}
           <InfoRow label="مدت زمان" value={formatDuration(song.duration)} />
+          <InfoRow label="تعداد پخش" value={`${formatNumber(song.playCount)} بار`} />
           <InfoRow label="پوشه" value={folderName} />
           <InfoRow label="حجم فایل" value={formatFileSize(song.fileSize)} />
         </View>

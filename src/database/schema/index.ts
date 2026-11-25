@@ -17,6 +17,9 @@ export const songs = sqliteTable(
     dateAdded: integer('date_added').notNull(),
     playCount: integer('play_count').notNull().default(0),
     lastPlayedAt: integer('last_played_at'),
+    year: integer('year'),
+    lyrics: text('lyrics'),
+    isUserEdited: integer('is_user_edited').notNull().default(0),
   },
   (table) => [
     uniqueIndex('idx_songs_file_uri').on(table.fileUri),

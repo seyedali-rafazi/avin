@@ -100,6 +100,14 @@ export const playlistRepository = {
       .run();
   },
 
+  updateArtwork(id: string, artworkUri: string | null): void {
+    const db = getDatabase();
+    db.update(playlists)
+      .set({ artworkUri, updatedAt: Date.now() })
+      .where(eq(playlists.id, id))
+      .run();
+  },
+
   delete(id: string): void {
     const db = getDatabase();
     db.delete(playlists).where(eq(playlists.id, id)).run();
@@ -115,7 +123,10 @@ export const playlistRepository = {
       .orderBy(asc(playlistSongs.position))
       .all();
 
-    return rows.map((r) => r.song);
+    return rows.map((r) => ({
+      ...r.song,
+      isUserEdited: Boolean(r.song.isUserEdited),
+    }));
   },
 
   addSongs(playlistId: string, songIds: string[]): void {

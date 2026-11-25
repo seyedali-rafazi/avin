@@ -2,13 +2,30 @@ jest.mock('@/services/audio/audioEngine', () => ({
   audioEngine: {
     setCallbacks: jest.fn(),
     loadAndPlay: jest.fn().mockResolvedValue(undefined),
+    crossfadeTo: jest.fn().mockResolvedValue(undefined),
+    preloadNextTrack: jest.fn().mockResolvedValue(undefined),
     play: jest.fn(),
     pause: jest.fn(),
     stop: jest.fn().mockResolvedValue(undefined),
     seekTo: jest.fn().mockResolvedValue(undefined),
     setPlaybackRate: jest.fn(),
     setVolume: jest.fn(),
+    setFadeMultiplier: jest.fn(),
+    setEqGainMultiplier: jest.fn(),
     setLoopCurrent: jest.fn(),
+    setGaplessPlayback: jest.fn(),
+    setCrossfadeSeconds: jest.fn(),
+    updateMetadata: jest.fn(),
+  },
+}));
+
+jest.mock('@/database/repositories', () => ({
+  settingsRepository: {
+    getPersistedPlaybackState: jest.fn(() => null),
+    savePersistedPlaybackState: jest.fn(),
+  },
+  songRepository: {
+    getByIds: jest.fn(() => []),
   },
 }));
 

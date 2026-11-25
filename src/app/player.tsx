@@ -6,43 +6,51 @@ import {
   Text,
   View,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
 import {
   ChevronDown,
+  FileText,
   Heart,
   ListMusic,
+  Moon,
   MoreVertical,
   SlidersHorizontal,
-  Volume2,
-  VolumeX,
 } from 'lucide-react-native';
 import {
   AlbumArtwork,
+  AudioEffectsSheet,
   BottomSheet,
   IconButton,
+  LyricsView,
   PlaybackControls,
   PlaybackProgressBar,
   ScreenContainer,
+  SleepTimerSheet,
   SongOptionsSheet,
   WaveformVisualizer,
 } from '@/components';
 import { PLAYBACK_SPEEDS } from '@/constants/audio';
-import { useLibraryStore, usePlayerStore } from '@/stores';
+import { useLibraryStore, usePlayerStore, useSleepTimerStore } from '@/stores';
 import { Colors, Fonts, Layout, Radii, Spacing, Typography } from '@/theme';
 import {
-  formatNumber,
+  formatDuration,
   formatSpeedLabel,
   isUnknownAlbum,
   localizeMetadata,
 } from '@/utils/format';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ARTWORK_SIZE = Math.min(SCREEN_WIDTH - 48, 336);
+const ARTWORK_SIZE = Math.min(SCREEN_WIDTH - 48, 326);
+const SWIPE_X_THRESHOLD = 65;
+const SWIPE_DOWN_THRESHOLD = 90;
 
 export default function NowPlayingScreen() {
   const currentSong = usePlayerStore((s) => s.currentSong);
@@ -53,7 +61,6 @@ export default function NowPlayingScreen() {
   const shuffle = usePlayerStore((s) => s.shuffle);
   const repeatMode = usePlayerStore((s) => s.repeatMode);
   const playbackRate = usePlayerStore((s) => s.playbackRate);
-  const volume = usePlayerStore((s) => s.volume);
   const error = usePlayerStore((s) => s.error);
 
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause);
@@ -63,7 +70,6 @@ export default function NowPlayingScreen() {
   const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
   const cycleRepeat = usePlayerStore((s) => s.cycleRepeat);
   const setPlaybackRate = usePlayerStore((s) => s.setPlaybackRate);
-  const setVolume = usePlayerStore((s) => s.setVolume);
   const clearError = usePlayerStore((s) => s.clearError);
 
   const isFavorite = useLibraryStore((s) =>
@@ -71,11 +77,18 @@ export default function NowPlayingScreen() {
   );
   const toggleFavorite = useLibraryStore((s) => s.toggleFavorite);
 
+  const sleepMode = useSleepTimerStore((s) => s.mode);
+  const sleepRemaining = useSleepTimerStore((s) => s.remainingSeconds);
+
   const [speedSheetVisible, setSpeedSheetVisible] = useState(false);
   const [audioSheetVisible, setAudioSheetVisible] = useState(false);
+  const [sleepSheetVisible, setSleepSheetVisible] = useState(false);
   const [optionsVisible, setOptionsVisible] = useState(false);
+  const [showLyrics, setShowLyrics] = useState(false);
 
   const artworkScale = useSharedValue(isPlaying ? 1 : 0.94);
+  const artworkTranslateX = useSharedValue(0);
+  const screenTranslateY = useSharedValue(0);
 
   useEffect(() => {
     artworkScale.value = withSpring(isPlaying ? 1 : 0.94, {
@@ -84,8 +97,76 @@ export default function NowPlayingScreen() {
     });
   }, [isPlaying, artworkScale]);
 
+  const triggerNext = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void nextTrack(false);
+  };
+
+  const triggerPrev = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void previousTrack();
+  };
+
+  const dismissPlayer = () => {
+    router.back();
+  };
+
+  // Horizontal swipe on artwork -> next/prev track; downward swipe -> close player
+  const artworkPanGesture = Gesture.Pan()
+    .activeOffsetX([-18, 18])
+    .activeOffsetY([22, 1000])
+    .onUpdate((e) => {
+      if (Math.abs(e.translationX) >= Math.abs(e.translationY)) {
+        artworkTranslateX.value = Math.max(-110, Math.min(110, e.translationX));
+      } else if (e.translationY > 0) {
+        screenTranslateY.value = Math.min(180, e.translationY);
+      }
+    })
+    .onEnd((e) => {
+      if (Math.abs(e.translationX) >= Math.abs(e.translationY)) {
+        if (e.translationX <= -SWIPE_X_THRESHOLD) {
+          runOnJS(triggerNext)();
+        } else if (e.translationX >= SWIPE_X_THRESHOLD) {
+          runOnJS(triggerPrev)();
+        }
+      } else if (e.translationY >= SWIPE_DOWN_THRESHOLD) {
+        runOnJS(dismissPlayer)();
+      }
+      artworkTranslateX.value = withSpring(0, { damping: 18, stiffness: 200 });
+      screenTranslateY.value = withSpring(0, { damping: 20, stiffness: 220 });
+    })
+    .onFinalize(() => {
+      artworkTranslateX.value = withSpring(0, { damping: 18, stiffness: 200 });
+      screenTranslateY.value = withSpring(0, { damping: 20, stiffness: 220 });
+    });
+
+  // Downward swipe on top header bar to dismiss even when lyrics are open
+  const headerDismissGesture = Gesture.Pan()
+    .activeOffsetY([16, 1000])
+    .onUpdate((e) => {
+      if (e.translationY > 0) {
+        screenTranslateY.value = Math.min(180, e.translationY);
+      }
+    })
+    .onEnd((e) => {
+      if (e.translationY >= SWIPE_DOWN_THRESHOLD) {
+        runOnJS(dismissPlayer)();
+      }
+      screenTranslateY.value = withSpring(0, { damping: 20, stiffness: 220 });
+    })
+    .onFinalize(() => {
+      screenTranslateY.value = withSpring(0, { damping: 20, stiffness: 220 });
+    });
+
   const animatedArtworkStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: artworkScale.value }],
+    transform: [
+      { translateX: artworkTranslateX.value },
+      { scale: artworkScale.value },
+    ],
+  }));
+
+  const animatedScreenStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: screenTranslateY.value }],
   }));
 
   if (!currentSong) {
@@ -116,21 +197,40 @@ export default function NowPlayingScreen() {
 
   return (
     <ScreenContainer edges={['top', 'bottom']}>
-      <View style={styles.container}>
-        {/* Top Navigation Row */}
-        <View style={styles.topBar}>
-          <IconButton
-            icon={<ChevronDown size={26} color={Colors.textPrimary} />}
-            onPress={() => router.back()}
-            accessibilityLabel="بازگشت"
-          />
-          <Text style={styles.nowPlayingBadge}>در حال پخش</Text>
-          <IconButton
-            icon={<MoreVertical size={22} color={Colors.textPrimary} />}
-            onPress={() => setOptionsVisible(true)}
-            accessibilityLabel="گزینه‌های بیشتر آهنگ"
-          />
-        </View>
+      <Animated.View style={[styles.container, animatedScreenStyle]}>
+        {/* Top Navigation Row (swipe down to dismiss) */}
+        <GestureDetector gesture={headerDismissGesture}>
+          <View style={styles.topBar}>
+            <IconButton
+              icon={<ChevronDown size={26} color={Colors.textPrimary} />}
+              onPress={() => router.back()}
+              accessibilityLabel="بازگشت"
+            />
+            <View style={styles.topCenter}>
+              <Text style={styles.nowPlayingBadge}>
+                {showLyrics ? 'متن آهنگ' : 'در حال پخش'}
+              </Text>
+              {sleepMode !== 'off' ? (
+                <Pressable
+                  onPress={() => setSleepSheetVisible(true)}
+                  style={styles.sleepBadge}
+                >
+                  <Moon size={11} color={Colors.accentSecondary} />
+                  <Text style={styles.sleepBadgeText}>
+                    {sleepMode === 'duration'
+                      ? formatDuration(sleepRemaining)
+                      : 'پایان آهنگ'}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+            <IconButton
+              icon={<MoreVertical size={22} color={Colors.textPrimary} />}
+              onPress={() => setOptionsVisible(true)}
+              accessibilityLabel="گزینه‌های بیشتر آهنگ"
+            />
+          </View>
+        </GestureDetector>
 
         {error ? (
           <Pressable onPress={clearError} style={styles.errorBanner}>
@@ -140,16 +240,26 @@ export default function NowPlayingScreen() {
           </Pressable>
         ) : null}
 
-        {/* Large Centered Album Artwork */}
+        {/* Artwork Stage OR Synced Lyrics View */}
         <View style={styles.artworkStage}>
-          <Animated.View style={[styles.artworkShadow, animatedArtworkStyle]}>
-            <AlbumArtwork
-              uri={currentSong.artworkUri}
-              size={ARTWORK_SIZE}
-              borderRadius={Radii.xxl}
-              iconSize={76}
+          {showLyrics ? (
+            <LyricsView
+              song={currentSong}
+              position={position}
+              onSeek={(sec) => void seekTo(sec)}
             />
-          </Animated.View>
+          ) : (
+            <GestureDetector gesture={artworkPanGesture}>
+              <Animated.View style={[styles.artworkShadow, animatedArtworkStyle]}>
+                <AlbumArtwork
+                  uri={currentSong.artworkUri}
+                  size={ARTWORK_SIZE}
+                  borderRadius={Radii.xxl}
+                  iconSize={76}
+                />
+              </Animated.View>
+            </GestureDetector>
+          )}
         </View>
 
         {/* Bottom Controls Stack */}
@@ -203,7 +313,7 @@ export default function NowPlayingScreen() {
             />
           </View>
 
-          {/* Secondary Controls Row: Speed pill + Queue + Audio Sliders */}
+          {/* Secondary Controls Row: Speed + Lyrics + Sleep Timer + Queue + EQ */}
           <View style={styles.secondaryRow}>
             <Pressable
               onPress={() => setSpeedSheetVisible(true)}
@@ -217,6 +327,26 @@ export default function NowPlayingScreen() {
 
             <View style={styles.secondaryEnd}>
               <IconButton
+                icon={
+                  <FileText
+                    size={20}
+                    color={showLyrics ? Colors.accentSecondary : Colors.textPrimary}
+                  />
+                }
+                onPress={() => setShowLyrics((v) => !v)}
+                accessibilityLabel="نمایش متن آهنگ"
+              />
+              <IconButton
+                icon={
+                  <Moon
+                    size={20}
+                    color={sleepMode !== 'off' ? Colors.accentSecondary : Colors.textPrimary}
+                  />
+                }
+                onPress={() => setSleepSheetVisible(true)}
+                accessibilityLabel="تایمر خواب"
+              />
+              <IconButton
                 icon={<ListMusic size={21} color={Colors.textPrimary} />}
                 onPress={() => router.push('/queue')}
                 accessibilityLabel="باز کردن صف پخش"
@@ -224,7 +354,7 @@ export default function NowPlayingScreen() {
               <IconButton
                 icon={<SlidersHorizontal size={20} color={Colors.textPrimary} />}
                 onPress={() => setAudioSheetVisible(true)}
-                accessibilityLabel="تنظیمات صدا"
+                accessibilityLabel="تنظیمات صدا و اکولایزر"
               />
             </View>
           </View>
@@ -234,7 +364,7 @@ export default function NowPlayingScreen() {
             <WaveformVisualizer isPlaying={isPlaying} />
           </View>
         </View>
-      </View>
+      </Animated.View>
 
       {/* Playback Speed Picker */}
       <BottomSheet
@@ -248,44 +378,16 @@ export default function NowPlayingScreen() {
         }))}
       />
 
-      {/* Volume / Audio Options Sheet */}
-      <BottomSheet
+      {/* Continuous Volume & 5-Band Equalizer Sheet */}
+      <AudioEffectsSheet
         visible={audioSheetVisible}
         onClose={() => setAudioSheetVisible(false)}
-        title="خروجی صدا"
-        subtitle={`بلندی صدا: ${formatNumber(Math.round(volume * 100))}٪`}
-        options={[
-          {
-            label: 'بلندی صدا ۱۰۰٪',
-            icon: <Volume2 size={18} color={Colors.accentSecondary} />,
-            selected: volume >= 0.95,
-            onPress: () => setVolume(1.0),
-          },
-          {
-            label: 'بلندی صدا ۷۵٪',
-            icon: <Volume2 size={18} color={Colors.textPrimary} />,
-            selected: volume >= 0.65 && volume < 0.95,
-            onPress: () => setVolume(0.75),
-          },
-          {
-            label: 'بلندی صدا ۵۰٪',
-            icon: <Volume2 size={18} color={Colors.textPrimary} />,
-            selected: volume >= 0.4 && volume < 0.65,
-            onPress: () => setVolume(0.5),
-          },
-          {
-            label: 'بلندی صدا ۲۵٪',
-            icon: <Volume2 size={18} color={Colors.textPrimary} />,
-            selected: volume > 0 && volume < 0.4,
-            onPress: () => setVolume(0.25),
-          },
-          {
-            label: 'بی‌صدا',
-            icon: <VolumeX size={18} color={Colors.textSecondary} />,
-            selected: volume === 0,
-            onPress: () => setVolume(0),
-          },
-        ]}
+      />
+
+      {/* Sleep Timer Sheet */}
+      <SleepTimerSheet
+        visible={sleepSheetVisible}
+        onClose={() => setSleepSheetVisible(false)}
       />
 
       <SongOptionsSheet
@@ -309,11 +411,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: Spacing.xs,
   },
+  topCenter: {
+    alignItems: 'center',
+    gap: 2,
+  },
   nowPlayingBadge: {
     fontFamily: Fonts.medium,
     fontSize: 12.5,
     lineHeight: 20,
     color: Colors.textSecondary,
+  },
+  sleepBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: Colors.surfaceHighlight,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: Radii.full,
+  },
+  sleepBadgeText: {
+    fontFamily: Fonts.semiBold,
+    fontSize: 10.5,
+    color: Colors.accentSecondary,
   },
   errorBanner: {
     backgroundColor: Colors.dangerMuted,
@@ -399,7 +519,7 @@ const styles = StyleSheet.create({
   secondaryEnd: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: 4,
   },
   pressed: {
     opacity: 0.72,

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { AppState, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StyleSheet, View } from 'react-native';
 import {
   useFonts,
   Vazirmatn_400Regular,
@@ -45,6 +45,16 @@ export default function RootLayout() {
     } finally {
       setReady(true);
     }
+
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        usePlayerStore.getState().persistPlaybackState();
+      }
+    });
+
+    return () => {
+      sub.remove();
+    };
   }, []);
 
   if (!ready || (!fontsLoaded && !fontError)) {

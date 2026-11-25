@@ -11,9 +11,8 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   Check,
-  ChevronDown,
-  ChevronUp,
   Edit3,
+  ImagePlus,
   ListMusic,
   MoreVertical,
   Play,
@@ -25,17 +24,20 @@ import {
   AlbumArtwork,
   AppModal,
   BottomSheet,
+  DraggableSongList,
   EmptyState,
   IconButton,
   MiniPlayer,
   PrimaryButton,
   ScreenContainer,
   ScreenHeader,
+  SearchBar,
   SelectionActionBar,
   SongOptionsSheet,
   SongRow,
 } from '@/components';
 import { useSongSelection } from '@/hooks/useSongSelection';
+import { fileActionsService } from '@/services/media/fileActionsService';
 import { useLibraryStore, usePlayerStore, usePlaylistStore } from '@/stores';
 import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import type { Song } from '@/types/music';
@@ -51,6 +53,7 @@ export default function PlaylistDetailScreen() {
   const removeSongFromPlaylist = usePlaylistStore((s) => s.removeSongFromPlaylist);
   const reorderPlaylistSongs = usePlaylistStore((s) => s.reorderPlaylistSongs);
   const renamePlaylist = usePlaylistStore((s) => s.renamePlaylist);
+  const updatePlaylistArtwork = usePlaylistStore((s) => s.updatePlaylistArtwork);
   const deletePlaylist = usePlaylistStore((s) => s.deletePlaylist);
 
   const allLibrarySongs = useLibraryStore((s) => s.songs);
@@ -70,6 +73,7 @@ export default function PlaylistDetailScreen() {
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [addSearchQuery, setAddSearchQuery] = useState('');
   const [renameModalVisible, setRenameModalVisible] = useState(false);
   const [renameValue, setRenameValue] = useState(playlist?.name ?? '');
   const [selectedToAdd, setSelectedToAdd] = useState<Set<string>>(new Set());
@@ -77,6 +81,21 @@ export default function PlaylistDetailScreen() {
   const [reorderMode, setReorderMode] = useState(false);
 
   const selection = useSongSelection(songs);
+
+  const existingIds = useMemo(() => new Set(songs.map((s) => s.id)), [songs]);
+
+  const availableToAdd = useMemo(() => {
+    const q = addSearchQuery.trim().toLowerCase();
+    return allLibrarySongs.filter((s) => {
+      if (existingIds.has(s.id)) return false;
+      if (!q) return true;
+      return (
+        s.title.toLowerCase().includes(q) ||
+        s.artist.toLowerCase().includes(q) ||
+        s.album.toLowerCase().includes(q)
+      );
+    });
+  }, [allLibrarySongs, existingIds, addSearchQuery]);
 
   if (!playlist || !id) {
     return (
@@ -90,9 +109,6 @@ export default function PlaylistDetailScreen() {
       </ScreenContainer>
     );
   }
-
-  const existingIds = new Set(songs.map((s) => s.id));
-  const availableToAdd = allLibrarySongs.filter((s) => !existingIds.has(s.id));
 
   const toggleSelectAdd = (songId: string) => {
     const next = new Set(selectedToAdd);
@@ -110,13 +126,21 @@ export default function PlaylistDetailScreen() {
       setRefreshTick((t) => t + 1);
     }
     setSelectedToAdd(new Set());
+    setAddSearchQuery('');
     setAddModalVisible(false);
   };
 
-  const handleMoveSong = (fromIndex: number, toIndex: number) => {
+  const handleReorderSong = (fromIndex: number, toIndex: number) => {
     const nextOrder = reorderList(songs, fromIndex, toIndex).map((s) => s.id);
     reorderPlaylistSongs(id, nextOrder);
     setRefreshTick((t) => t + 1);
+  };
+
+  const handleChangeArtwork = async () => {
+    const uri = await fileActionsService.pickCustomArtwork(id);
+    if (uri) {
+      updatePlaylistArtwork(id, uri);
+    }
   };
 
   const handleRename = () => {
@@ -148,20 +172,35 @@ export default function PlaylistDetailScreen() {
     <ScreenContainer edges={['top', 'bottom']}>
       <ScreenHeader
         title={playlist.name}
-        subtitle={formatSongCount(songs.length)}
+        subtitle={
+          reorderMode
+            ? 'حالت چیدمان • دستگیره را بکشید'
+            : formatSongCount(songs.length)
+        }
         onBack={() => router.back()}
         rightElement={
           <View style={styles.headerActions}>
-            <IconButton
-              icon={<Plus size={22} color={Colors.textPrimary} />}
-              onPress={() => setAddModalVisible(true)}
-              accessibilityLabel="افزودن آهنگ به پلی‌لیست"
-            />
-            <IconButton
-              icon={<MoreVertical size={20} color={Colors.textPrimary} />}
-              onPress={() => setMenuVisible(true)}
-              accessibilityLabel="گزینه‌های پلی‌لیست"
-            />
+            {reorderMode ? (
+              <Pressable
+                onPress={() => setReorderMode(false)}
+                style={styles.doneReorderBtn}
+              >
+                <Text style={styles.doneReorderText}>ذخیره</Text>
+              </Pressable>
+            ) : (
+              <>
+                <IconButton
+                  icon={<Plus size={22} color={Colors.textPrimary} />}
+                  onPress={() => setAddModalVisible(true)}
+                  accessibilityLabel="افزودن آهنگ به پلی‌لیست"
+                />
+                <IconButton
+                  icon={<MoreVertical size={20} color={Colors.textPrimary} />}
+                  onPress={() => setMenuVisible(true)}
+                  accessibilityLabel="گزینه‌های پلی‌لیست"
+                />
+              </>
+            )}
           </View>
         }
       />
@@ -174,22 +213,40 @@ export default function PlaylistDetailScreen() {
           actionLabel="افزودن آهنگ"
           onAction={() => setAddModalVisible(true)}
         />
+      ) : reorderMode ? (
+        <DraggableSongList
+          songs={songs}
+          currentSongId={currentSong?.id ?? null}
+          onPressSong={(idx) => void playQueue(songs, idx, false)}
+          onReorder={handleReorderSong}
+          onRemoveSong={(idx) => {
+            const target = songs[idx];
+            if (target) {
+              removeSongFromPlaylist(id, target.id);
+              setRefreshTick((t) => t + 1);
+            }
+          }}
+        />
       ) : (
         <FlatList
           data={songs}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={
             <View style={styles.heroHeader}>
-              <AlbumArtwork
-                uri={playlist.artworkUri}
-                size={156}
-                borderRadius={Radii.xl}
-                iconSize={52}
-              />
+              <Pressable onPress={() => void handleChangeArtwork()}>
+                <AlbumArtwork
+                  uri={playlist.artworkUri}
+                  size={156}
+                  borderRadius={Radii.xl}
+                  iconSize={52}
+                />
+              </Pressable>
               <View style={styles.actionsRow}>
                 <PrimaryButton
                   label="پخش"
-                  icon={<Play size={15} color={Colors.textPrimary} fill={Colors.textPrimary} />}
+                  icon={
+                    <Play size={15} color={Colors.textPrimary} fill={Colors.textPrimary} />
+                  }
                   onPress={() => void playQueue(songs, 0, false)}
                   style={styles.flexBtn}
                 />
@@ -208,45 +265,17 @@ export default function PlaylistDetailScreen() {
               song={item}
               showAlbum
               isActive={currentSong?.id === item.id}
-              selectionMode={!reorderMode && selection.isSelectionMode}
-              isSelected={!reorderMode && selection.selectedIds.has(item.id)}
+              selectionMode={selection.isSelectionMode}
+              isSelected={selection.selectedIds.has(item.id)}
               onPress={() => {
-                if (!reorderMode && selection.isSelectionMode) {
+                if (selection.isSelectionMode) {
                   selection.toggleSelect(item.id);
                 } else {
                   void playQueue(songs, index, false);
                 }
               }}
-              onLongPress={reorderMode ? undefined : () => selection.enterSelection(item.id)}
-              onMorePress={reorderMode ? undefined : () => setSelectedSong(item)}
-              rightElement={
-                reorderMode ? (
-                  <View style={styles.reorderControls}>
-                    <Pressable
-                      onPress={() => handleMoveSong(index, index - 1)}
-                      disabled={index === 0}
-                      hitSlop={8}
-                    >
-                      <ChevronUp
-                        size={18}
-                        color={index === 0 ? Colors.border : Colors.textPrimary}
-                      />
-                    </Pressable>
-                    <Pressable
-                      onPress={() => handleMoveSong(index, index + 1)}
-                      disabled={index === songs.length - 1}
-                      hitSlop={8}
-                    >
-                      <ChevronDown
-                        size={18}
-                        color={
-                          index === songs.length - 1 ? Colors.border : Colors.textPrimary
-                        }
-                      />
-                    </Pressable>
-                  </View>
-                ) : undefined
-              }
+              onLongPress={() => selection.enterSelection(item.id)}
+              onMorePress={() => setSelectedSong(item)}
             />
           )}
           contentContainerStyle={[
@@ -299,9 +328,14 @@ export default function PlaylistDetailScreen() {
             onPress: () => setAddModalVisible(true),
           },
           {
-            label: reorderMode ? 'پایان چیدمان' : 'تغییر ترتیب آهنگ‌ها',
+            label: 'تغییر ترتیب آهنگ‌ها (Drag & Drop)',
             icon: <ListMusic size={18} color={Colors.accentSecondary} />,
-            onPress: () => setReorderMode((v) => !v),
+            onPress: () => setReorderMode(true),
+          },
+          {
+            label: 'تغییر کاور پلی‌لیست',
+            icon: <ImagePlus size={18} color={Colors.textPrimary} />,
+            onPress: () => void handleChangeArtwork(),
           },
           {
             label: 'تغییر نام پلی‌لیست',
@@ -320,51 +354,69 @@ export default function PlaylistDetailScreen() {
         ]}
       />
 
-      {/* Add Songs Sheet */}
+      {/* Add Songs Sheet with Live Search & Unlimited FlatList */}
       <BottomSheet
         visible={addModalVisible}
         onClose={() => {
           setSelectedToAdd(new Set());
+          setAddSearchQuery('');
           setAddModalVisible(false);
         }}
         title="افزودن آهنگ"
         subtitle={
           selectedToAdd.size > 0
             ? `${formatNumber(selectedToAdd.size)} آهنگ انتخاب شده`
-            : 'آهنگ‌ها را از کتابخانه انتخاب کنید'
+            : 'آهنگ‌ها را از کتابخانه جستجو و انتخاب کنید'
         }
       >
+        <View style={styles.pickerSearchWrap}>
+          <SearchBar
+            value={addSearchQuery}
+            onChangeText={setAddSearchQuery}
+            placeholder="جستجوی آهنگ، هنرمند یا آلبوم..."
+          />
+        </View>
+
         {availableToAdd.length === 0 ? (
           <View style={styles.emptyPicker}>
             <Text style={styles.emptyPickerText}>
-              همه آهنگ‌های کتابخانه در حال حاضر در این پلی‌لیست وجود دارند.
+              {addSearchQuery.trim()
+                ? 'آهنگی با این عبارت پیدا نشد.'
+                : 'همه آهنگ‌های کتابخانه در حال حاضر در این پلی‌لیست وجود دارند.'}
             </Text>
           </View>
         ) : (
           <View>
-            {availableToAdd.slice(0, 100).map((song) => {
-              const checked = selectedToAdd.has(song.id);
-              return (
-                <Pressable
-                  key={song.id}
-                  onPress={() => toggleSelectAdd(song.id)}
-                  style={styles.pickerRow}
-                >
-                  <AlbumArtwork uri={song.artworkUri} size={40} borderRadius={6} />
-                  <View style={styles.pickerMeta}>
-                    <Text style={styles.pickerTitle} numberOfLines={1}>
-                      {song.title}
-                    </Text>
-                    <Text style={styles.pickerArtist} numberOfLines={1}>
-                      {localizeMetadata(song.artist, 'هنرمند ناشناس')}
-                    </Text>
-                  </View>
-                  <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-                    {checked ? <Check size={14} color={Colors.textPrimary} /> : null}
-                  </View>
-                </Pressable>
-              );
-            })}
+            <FlatList
+              data={availableToAdd}
+              keyExtractor={(item) => item.id}
+              style={styles.pickerList}
+              keyboardShouldPersistTaps="handled"
+              initialNumToRender={15}
+              maxToRenderPerBatch={20}
+              renderItem={({ item: song }) => {
+                const checked = selectedToAdd.has(song.id);
+                return (
+                  <Pressable
+                    onPress={() => toggleSelectAdd(song.id)}
+                    style={styles.pickerRow}
+                  >
+                    <AlbumArtwork uri={song.artworkUri} size={40} borderRadius={6} />
+                    <View style={styles.pickerMeta}>
+                      <Text style={styles.pickerTitle} numberOfLines={1}>
+                        {song.title}
+                      </Text>
+                      <Text style={styles.pickerArtist} numberOfLines={1}>
+                        {localizeMetadata(song.artist, 'هنرمند ناشناس')}
+                      </Text>
+                    </View>
+                    <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+                      {checked ? <Check size={14} color={Colors.textPrimary} /> : null}
+                    </View>
+                  </Pressable>
+                );
+              }}
+            />
             <View style={styles.pickerFooter}>
               <PrimaryButton
                 label={
@@ -429,6 +481,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  doneReorderBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: Radii.full,
+    backgroundColor: Colors.accent,
+  },
+  doneReorderText: {
+    fontFamily: Fonts.semiBold,
+    fontSize: 12.5,
+    color: Colors.textPrimary,
+  },
   heroHeader: {
     alignItems: 'center',
     paddingHorizontal: Layout.screenPadding,
@@ -470,10 +533,12 @@ const styles = StyleSheet.create({
   listWithSelectionBar: {
     paddingBottom: 150,
   },
-  reorderControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
+  pickerSearchWrap: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
+  },
+  pickerList: {
+    maxHeight: 310,
   },
   emptyPicker: {
     padding: Spacing.xl,

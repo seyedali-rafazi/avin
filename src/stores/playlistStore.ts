@@ -8,7 +8,9 @@ interface PlaylistState {
 
   refreshPlaylists: () => void;
   createPlaylist: (name: string) => Playlist | null;
+  createPlaylistWithSongs: (name: string, songIds: string[]) => Playlist | null;
   renamePlaylist: (id: string, name: string) => boolean;
+  updatePlaylistArtwork: (id: string, artworkUri: string | null) => void;
   deletePlaylist: (id: string) => void;
   getPlaylistSongs: (playlistId: string) => Song[];
   addSongsToPlaylist: (playlistId: string, songIds: string[]) => void;
@@ -41,6 +43,20 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
     }
   },
 
+  createPlaylistWithSongs: (name, songIds) => {
+    try {
+      const created = playlistRepository.create(name);
+      if (songIds.length > 0) {
+        playlistRepository.addSongs(created.id, songIds);
+      }
+      get().refreshPlaylists();
+      return created;
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Unable to create playlist.' });
+      return null;
+    }
+  },
+
   renamePlaylist: (id, name) => {
     try {
       playlistRepository.rename(id, name);
@@ -50,6 +66,11 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
       set({ error: err instanceof Error ? err.message : 'Unable to rename playlist.' });
       return false;
     }
+  },
+
+  updatePlaylistArtwork: (id, artworkUri) => {
+    playlistRepository.updateArtwork(id, artworkUri);
+    get().refreshPlaylists();
   },
 
   deletePlaylist: (id) => {

@@ -219,7 +219,7 @@ export default function HomeScreen() {
                   onActionPress={() =>
                     router.push({
                       pathname: '/library/[category]',
-                      params: { category: 'recently-added' },
+                      params: { category: 'recently-played' },
                     })
                   }
                 />

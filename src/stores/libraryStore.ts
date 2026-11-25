@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { favoritesRepository, songRepository } from '@/database/repositories';
+import { fileActionsService } from '@/services/media/fileActionsService';
 import {
   mediaScannerService,
   type ScanProgress,
@@ -10,10 +11,21 @@ import type {
   Artist,
   FolderInfo,
   GenreInfo,
+  ListeningStats,
   Song,
+  SongMetadataPatch,
   SortField,
   SortOrder,
 } from '@/types/music';
+
+const EMPTY_STATS: ListeningStats = {
+  totalPlays: 0,
+  totalSongs: 0,
+  playedSongsCount: 0,
+  totalDurationSeconds: 0,
+  topArtist: null,
+  topSong: null,
+};
 
 interface LibraryState {
   songs: Song[];
@@ -23,6 +35,9 @@ interface LibraryState {
   folders: FolderInfo[];
   recentlyAdded: Song[];
   recentlyPlayed: Song[];
+  mostPlayed: Song[];
+  neverPlayed: Song[];
+  listeningStats: ListeningStats;
   favoriteIds: Set<string>;
   favoriteSongs: Song[];
   sortBy: SortField;
@@ -41,7 +56,9 @@ interface LibraryState {
   isFavorite: (songId: string) => boolean;
   recordSongPlayed: (songId: string) => void;
   clearPlaybackHistory: () => void;
+  updateSongMetadata: (songId: string, patch: SongMetadataPatch) => Song | null;
   deleteSong: (songId: string) => void;
+  deleteSongFromDevice: (song: Song) => Promise<{ deletedFromStorage: boolean; message?: string }>;
   deleteSongs: (songIds: string[]) => void;
   clearError: () => void;
 }
@@ -54,6 +71,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   folders: [],
   recentlyAdded: [],
   recentlyPlayed: [],
+  mostPlayed: [],
+  neverPlayed: [],
+  listeningStats: EMPTY_STATS,
   favoriteIds: new Set<string>(),
   favoriteSongs: [],
   sortBy: 'title',
@@ -73,7 +93,10 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       const allGenres = songRepository.getGenres();
       const allFolders = songRepository.getFolders();
       const recentlyAdded = songRepository.getRecentlyAdded(50);
-      const recentlyPlayed = songRepository.getRecentlyPlayed(20);
+      const recentlyPlayed = songRepository.getRecentlyPlayed(50);
+      const mostPlayed = songRepository.getMostPlayed(50);
+      const neverPlayed = songRepository.getNeverPlayed(100);
+      const listeningStats = songRepository.getListeningStats();
       const favIds = new Set(favoritesRepository.getFavoriteSongIds());
       const favSongs = favoritesRepository.getFavoriteSongs('dateAdded', 'desc');
 
@@ -85,6 +108,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         folders: allFolders,
         recentlyAdded,
         recentlyPlayed,
+        mostPlayed,
+        neverPlayed,
+        listeningStats,
         favoriteIds: favIds,
         favoriteSongs: favSongs,
         isLoading: false,
@@ -113,7 +139,11 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       };
     }
 
-    set({ isScanning: true, error: null, scanProgress: { scanned: 0, total: 0, phase: 'requesting-permission' } });
+    set({
+      isScanning: true,
+      error: null,
+      scanProgress: { scanned: 0, total: 0, phase: 'requesting-permission' },
+    });
     const result = await mediaScannerService.scanDeviceLibrary((progress) => {
       set({ scanProgress: progress });
     });
@@ -158,8 +188,11 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   recordSongPlayed: (songId) => {
     try {
       songRepository.recordPlay(songId);
-      const recentlyPlayed = songRepository.getRecentlyPlayed(20);
-      set({ recentlyPlayed });
+      const recentlyPlayed = songRepository.getRecentlyPlayed(50);
+      const mostPlayed = songRepository.getMostPlayed(50);
+      const neverPlayed = songRepository.getNeverPlayed(100);
+      const listeningStats = songRepository.getListeningStats();
+      set({ recentlyPlayed, mostPlayed, neverPlayed, listeningStats });
     } catch {
       // Non-fatal history write error
     }
@@ -167,12 +200,27 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   clearPlaybackHistory: () => {
     songRepository.clearPlaybackHistory();
-    set({ recentlyPlayed: [] });
+    get().refreshLibrary();
+  },
+
+  updateSongMetadata: (songId, patch) => {
+    const updated = songRepository.updateMetadata(songId, patch);
+    if (updated) {
+      get().refreshLibrary();
+    }
+    return updated;
   },
 
   deleteSong: (songId) => {
     songRepository.deleteById(songId);
     get().refreshLibrary();
+  },
+
+  deleteSongFromDevice: async (song) => {
+    const res = await fileActionsService.deleteAudioFileFromDevice(song);
+    songRepository.deleteById(song.id);
+    get().refreshLibrary();
+    return res;
   },
 
   deleteSongs: (songIds) => {
