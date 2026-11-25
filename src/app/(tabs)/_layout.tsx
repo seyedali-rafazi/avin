@@ -1,4 +1,5 @@
 import React from 'react';
+import { Easing } from 'react-native';
 import { Tabs } from 'expo-router';
 import { BottomTabBar } from '@/components/layout/BottomTabBar';
 import { Colors } from '@/theme';
@@ -9,6 +10,14 @@ export default function TabsLayout() {
       tabBar={(props) => <BottomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        animation: 'shift',
+        transitionSpec: {
+          animation: 'timing',
+          config: {
+            duration: 220,
+            easing: Easing.out(Easing.cubic),
+          },
+        },
         sceneStyle: { backgroundColor: Colors.background, direction: 'rtl' },
       }}
     >

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Share, StyleSheet, Text, View } from 'react-native';
 import {
   BellRing,
@@ -38,45 +38,98 @@ export function SongOptionsSheet({
   onClose,
   onRemoveFromPlaylist,
 }: SongOptionsSheetProps) {
+  const [activeSong, setActiveSong] = useState<Song | null>(song);
   const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
+  const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (song) {
+      setActiveSong(song);
+    }
+  }, [song]);
+
+  useEffect(() => {
+    if (visible) {
+      if (pendingTimerRef.current) {
+        clearTimeout(pendingTimerRef.current);
+        pendingTimerRef.current = null;
+      }
+      setShowPlaylistPicker(false);
+      setShowInfo(false);
+      setShowEditor(false);
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingTimerRef.current) {
+        clearTimeout(pendingTimerRef.current);
+      }
+    };
+  }, []);
+
+  const targetSongBase = song ?? activeSong;
+  const targetSong = useLibraryStore((s) =>
+    targetSongBase
+      ? (s.songs.find((item) => item.id === targetSongBase.id) ?? targetSongBase)
+      : null
+  );
 
   const playNext = usePlayerStore((s) => s.playNext);
   const addToQueue = usePlayerStore((s) => s.addToQueue);
   const removeSongById = usePlayerStore((s) => s.removeSongById);
 
-  const isFavorite = useLibraryStore((s) => (song ? s.favoriteIds.has(song.id) : false));
+  const isFavorite = useLibraryStore((s) =>
+    targetSong ? s.favoriteIds.has(targetSong.id) : false
+  );
   const toggleFavorite = useLibraryStore((s) => s.toggleFavorite);
   const deleteSong = useLibraryStore((s) => s.deleteSong);
   const deleteSongFromDevice = useLibraryStore((s) => s.deleteSongFromDevice);
 
-  if (!song) return null;
+  if (!targetSong) return null;
 
-  const artistName = localizeMetadata(song.artist, 'هنرمند ناشناس');
-  const albumName = localizeMetadata(song.album, 'آلبوم ناشناس');
-  const genreName = localizeMetadata(song.genre, 'سبک ناشناس');
-  const folderName = localizeMetadata(song.folder, 'حافظه دستگاه');
+  const openSubModal = (target: 'playlist' | 'editor' | 'info') => {
+    if (pendingTimerRef.current) {
+      clearTimeout(pendingTimerRef.current);
+    }
+    pendingTimerRef.current = setTimeout(() => {
+      pendingTimerRef.current = null;
+      if (target === 'playlist') {
+        setShowPlaylistPicker(true);
+      } else if (target === 'editor') {
+        setShowEditor(true);
+      } else {
+        setShowInfo(true);
+      }
+    }, 180);
+  };
+
+  const artistName = localizeMetadata(targetSong.artist, 'هنرمند ناشناس');
+  const albumName = localizeMetadata(targetSong.album, 'آلبوم ناشناس');
+  const genreName = localizeMetadata(targetSong.genre, 'سبک ناشناس');
+  const folderName = localizeMetadata(targetSong.folder, 'حافظه دستگاه');
 
   const handleShare = () => {
     void Share.share({
-      title: song.title,
-      message: `${song.title} — ${artistName}`,
-      url: song.fileUri,
+      title: targetSong.title,
+      message: `${targetSong.title} — ${artistName}`,
+      url: targetSong.fileUri,
     });
   };
 
   const handleDeleteSong = () => {
     Alert.alert(
       'حذف آهنگ',
-      `می‌خواهید «${song.title}» را فقط از کتابخانه برنامه حذف کنید یا فایل اصلی آن را نیز از حافظه دستگاه پاک کنید؟`,
+      `می‌خواهید «${targetSong.title}» را فقط از کتابخانه برنامه حذف کنید یا فایل اصلی آن را نیز از حافظه دستگاه پاک کنید؟`,
       [
         { text: 'انصراف', style: 'cancel' },
         {
           text: 'فقط از کتابخانه',
           onPress: () => {
-            removeSongById(song.id);
-            deleteSong(song.id);
+            removeSongById(targetSong.id);
+            deleteSong(targetSong.id);
           },
         },
         {
@@ -84,8 +137,8 @@ export function SongOptionsSheet({
           style: 'destructive',
           onPress: () => {
             void (async () => {
-              removeSongById(song.id);
-              const res = await deleteSongFromDevice(song);
+              removeSongById(targetSong.id);
+              const res = await deleteSongFromDevice(targetSong);
               if (res.message) {
                 Alert.alert('حذف فایل', res.message);
               }
@@ -100,12 +153,12 @@ export function SongOptionsSheet({
     {
       label: 'پخش بعدی',
       icon: <Play size={19} color={Colors.textPrimary} />,
-      onPress: () => playNext(song),
+      onPress: () => playNext(targetSong),
     },
     {
       label: 'افزودن به صف پخش',
       icon: <ListEnd size={19} color={Colors.textPrimary} />,
-      onPress: () => addToQueue(song),
+      onPress: () => addToQueue(targetSong),
     },
     {
       label: isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها',
@@ -116,22 +169,22 @@ export function SongOptionsSheet({
           fill={isFavorite ? Colors.accent : 'transparent'}
         />
       ),
-      onPress: () => toggleFavorite(song.id),
+      onPress: () => toggleFavorite(targetSong.id),
     },
     {
       label: 'افزودن به پلی‌لیست',
       icon: <ListPlus size={19} color={Colors.textPrimary} />,
-      onPress: () => setShowPlaylistPicker(true),
+      onPress: () => openSubModal('playlist'),
     },
     {
       label: 'ویرایش مشخصات و کاور',
       icon: <Edit3 size={19} color={Colors.textPrimary} />,
-      onPress: () => setShowEditor(true),
+      onPress: () => openSubModal('editor'),
     },
     {
       label: 'تنظیم به‌عنوان زنگ گوشی',
       icon: <BellRing size={19} color={Colors.textPrimary} />,
-      onPress: () => void fileActionsService.setAsRingtone(song),
+      onPress: () => void fileActionsService.setAsRingtone(targetSong),
     },
     {
       label: 'اشتراک‌گذاری',
@@ -141,7 +194,7 @@ export function SongOptionsSheet({
     {
       label: 'مشخصات آهنگ',
       icon: <Info size={19} color={Colors.textPrimary} />,
-      onPress: () => setShowInfo(true),
+      onPress: () => openSubModal('info'),
     },
   ];
 
@@ -166,19 +219,19 @@ export function SongOptionsSheet({
       <BottomSheet
         visible={visible}
         onClose={onClose}
-        title={song.title}
+        title={targetSong.title}
         subtitle={`${artistName} • ${albumName}`}
         options={options}
       />
 
       <AddToPlaylistSheet
         visible={showPlaylistPicker}
-        songIds={[song.id]}
+        songIds={[targetSong.id]}
         onClose={() => setShowPlaylistPicker(false)}
       />
 
       <EditSongModal
-        song={song}
+        song={targetSong}
         visible={showEditor}
         onClose={() => setShowEditor(false)}
       />
@@ -189,15 +242,17 @@ export function SongOptionsSheet({
         title="مشخصات آهنگ"
       >
         <View style={styles.infoBlock}>
-          <InfoRow label="عنوان" value={song.title} />
+          <InfoRow label="عنوان" value={targetSong.title} />
           <InfoRow label="هنرمند" value={artistName} />
           <InfoRow label="آلبوم" value={albumName} />
           <InfoRow label="سبک" value={genreName} />
-          {song.year ? <InfoRow label="سال" value={formatNumber(song.year)} /> : null}
-          <InfoRow label="مدت زمان" value={formatDuration(song.duration)} />
-          <InfoRow label="تعداد پخش" value={`${formatNumber(song.playCount)} بار`} />
+          {targetSong.year ? (
+            <InfoRow label="سال" value={formatNumber(targetSong.year)} />
+          ) : null}
+          <InfoRow label="مدت زمان" value={formatDuration(targetSong.duration)} />
+          <InfoRow label="تعداد پخش" value={`${formatNumber(targetSong.playCount)} بار`} />
           <InfoRow label="پوشه" value={folderName} />
-          <InfoRow label="حجم فایل" value={formatFileSize(song.fileSize)} />
+          <InfoRow label="حجم فایل" value={formatFileSize(targetSong.fileSize)} />
         </View>
       </BottomSheet>
     </>

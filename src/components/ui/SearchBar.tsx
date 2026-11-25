@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, TextInput, View, type ViewStyle } from 'react-native';
 import { Search, X } from 'lucide-react-native';
 import { Colors, Fonts, Radii, Spacing } from '@/theme';
@@ -24,16 +24,26 @@ export function SearchBar({
   editable = true,
   style,
 }: SearchBarProps) {
+  const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
+
+  useEffect(() => {
+    if (!autoFocus || !editable) return;
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 240);
+    return () => clearTimeout(timer);
+  }, [autoFocus, editable]);
+
   const content = (
     <View style={[styles.container, style]}>
       <Search size={18} color={Colors.textSecondary} />
       <TextInput
+        ref={inputRef}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={Colors.textMuted}
         style={styles.input}
-        autoFocus={autoFocus}
         editable={editable}
         pointerEvents={editable ? 'auto' : 'none'}
         returnKeyType="search"

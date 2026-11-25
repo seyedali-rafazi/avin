@@ -198,14 +198,15 @@ export default function NowPlayingScreen() {
   return (
     <ScreenContainer edges={['top', 'bottom']}>
       <Animated.View style={[styles.container, animatedScreenStyle]}>
-        {/* Top Navigation Row (swipe down to dismiss) */}
-        <GestureDetector gesture={headerDismissGesture}>
-          <View style={styles.topBar}>
-            <IconButton
-              icon={<ChevronDown size={26} color={Colors.textPrimary} />}
-              onPress={() => router.back()}
-              accessibilityLabel="بازگشت"
-            />
+        {/* Top Navigation Row (swipe down on center header to dismiss) */}
+        <View style={styles.topBar}>
+          <IconButton
+            icon={<ChevronDown size={26} color={Colors.textPrimary} />}
+            onPress={() => router.back()}
+            size={44}
+            accessibilityLabel="بازگشت"
+          />
+          <GestureDetector gesture={headerDismissGesture}>
             <View style={styles.topCenter}>
               <Text style={styles.nowPlayingBadge}>
                 {showLyrics ? 'متن آهنگ' : 'در حال پخش'}
@@ -224,13 +225,14 @@ export default function NowPlayingScreen() {
                 </Pressable>
               ) : null}
             </View>
-            <IconButton
-              icon={<MoreVertical size={22} color={Colors.textPrimary} />}
-              onPress={() => setOptionsVisible(true)}
-              accessibilityLabel="گزینه‌های بیشتر آهنگ"
-            />
-          </View>
-        </GestureDetector>
+          </GestureDetector>
+          <IconButton
+            icon={<MoreVertical size={22} color={Colors.textPrimary} />}
+            onPress={() => setOptionsVisible(true)}
+            size={44}
+            accessibilityLabel="گزینه‌های بیشتر آهنگ"
+          />
+        </View>
 
         {error ? (
           <Pressable onPress={clearError} style={styles.errorBanner}>
@@ -412,7 +414,10 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xs,
   },
   topCenter: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.xs,
     gap: 2,
   },
   nowPlayingBadge: {

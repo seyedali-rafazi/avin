@@ -1,5 +1,13 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Colors, Radii, Spacing, Typography } from '@/theme';
 
 interface AppModalProps {
@@ -18,12 +26,24 @@ export function AppModal({ visible, onClose, title, children }: AppModalProps) {
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>{title}</Text>
-          {children}
-        </Pressable>
-      </Pressable>
+      <View style={styles.backdrop}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="بستن"
+        />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoid}
+          pointerEvents="box-none"
+        >
+          <View style={styles.card}>
+            <Text style={styles.title}>{title}</Text>
+            {children}
+          </View>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -37,9 +57,15 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     direction: 'rtl',
   },
-  card: {
+  keyboardAvoid: {
     width: '100%',
     maxWidth: 380,
+    maxHeight: '88%',
+    justifyContent: 'center',
+  },
+  card: {
+    width: '100%',
+    maxHeight: '100%',
     backgroundColor: Colors.surface,
     borderRadius: Radii.xl,
     padding: Spacing.xl,

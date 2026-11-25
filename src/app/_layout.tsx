@@ -69,7 +69,9 @@ export default function RootLayout() {
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: Colors.background, direction: 'rtl' },
-            animation: 'slide_from_left',
+            animation: 'ios_from_left',
+            gestureEnabled: true,
+            fullScreenGestureEnabled: true,
           }}
         >
           <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
@@ -78,6 +80,7 @@ export default function RootLayout() {
             options={{
               presentation: 'fullScreenModal',
               animation: 'slide_from_bottom',
+              animationDuration: 260,
             }}
           />
           <Stack.Screen
@@ -85,9 +88,16 @@ export default function RootLayout() {
             options={{
               presentation: 'modal',
               animation: 'slide_from_bottom',
+              animationDuration: 260,
             }}
           />
-          <Stack.Screen name="search" />
+          <Stack.Screen
+            name="search"
+            options={{
+              animation: 'fade_from_bottom',
+              animationDuration: 220,
+            }}
+          />
           <Stack.Screen name="playlist/[id]" />
           <Stack.Screen name="library/[category]" />
           <Stack.Screen name="library/detail" />

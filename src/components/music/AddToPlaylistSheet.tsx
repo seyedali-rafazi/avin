@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -34,10 +34,32 @@ export function AddToPlaylistSheet({
 
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
+  const pendingSongIdsRef = useRef<string[]>(songIds);
+  const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (songIds.length > 0) {
+      pendingSongIdsRef.current = songIds;
+    }
+  }, [songIds]);
+
+  useEffect(() => {
+    return () => {
+      if (openTimerRef.current) {
+        clearTimeout(openTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleOpenCreate = () => {
     setNewPlaylistName('');
-    setTimeout(() => setCreateModalVisible(true), 120);
+    if (openTimerRef.current) {
+      clearTimeout(openTimerRef.current);
+    }
+    openTimerRef.current = setTimeout(() => {
+      openTimerRef.current = null;
+      setCreateModalVisible(true);
+    }, 180);
   };
 
   const handleCreateAndAdd = () => {
@@ -47,9 +69,10 @@ export function AddToPlaylistSheet({
       return;
     }
 
+    const idsToAdd = songIds.length > 0 ? songIds : pendingSongIdsRef.current;
     const created = createPlaylist(trimmed);
-    if (created && songIds.length > 0) {
-      addSongsToPlaylist(created.id, songIds);
+    if (created && idsToAdd.length > 0) {
+      addSongsToPlaylist(created.id, idsToAdd);
     }
     setCreateModalVisible(false);
     setNewPlaylistName('');

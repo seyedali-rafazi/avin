@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,8 @@ import {
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import {
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
   FolderPlus,
   Music,
   RefreshCw,
@@ -44,7 +46,6 @@ const AVIN_LOGO = require('../../../assets/Avin-logo.png');
 export default function HomeScreen() {
   const songs = useLibraryStore((s) => s.songs);
   const recentlyPlayed = useLibraryStore((s) => s.recentlyPlayed);
-  const recentlyAdded = useLibraryStore((s) => s.recentlyAdded);
   const favoriteSongs = useLibraryStore((s) => s.favoriteSongs);
   const isScanning = useLibraryStore((s) => s.isScanning);
   const scanProgress = useLibraryStore((s) => s.scanProgress);
@@ -57,11 +58,18 @@ export default function HomeScreen() {
   const playQueue = usePlayerStore((s) => s.playQueue);
 
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const [dateOrder, setDateOrder] = useState<'desc' | 'asc'>('desc');
 
   const recentPlayedPreview = recentlyPlayed.slice(0, 10);
-  const recentAddedPreview = recentlyAdded.slice(0, 8);
+  const allSongsByDate = useMemo(
+    () =>
+      [...songs].sort((a, b) =>
+        dateOrder === 'desc' ? b.dateAdded - a.dateAdded : a.dateAdded - b.dateAdded
+      ),
+    [songs, dateOrder]
+  );
 
-  const selection = useSongSelection(recentAddedPreview);
+  const selection = useSongSelection(allSongsByDate);
 
   const handleShuffleAll = () => {
     if (songs.length === 0) {
@@ -103,230 +111,252 @@ export default function HomeScreen() {
     }
   };
 
+  const listHeader = (
+    <>
+      {/* Clean Branded App Header */}
+      <View style={styles.header}>
+        <View style={styles.brandRow}>
+          <View style={styles.logoFrame}>
+            <Image
+              source={AVIN_LOGO}
+              style={styles.logoImage}
+              contentFit="cover"
+            />
+          </View>
+          <View style={styles.brandTextWrap}>
+            <Text style={styles.brandName}>آوین</Text>
+            <Text style={styles.brandMeta} numberOfLines={1}>
+              {isScanning && scanProgress
+                ? `در حال اسکن ${formatNumber(scanProgress.scanned)}${scanProgress.total > 0 ? ` از ${formatNumber(scanProgress.total)}` : ''}...`
+                : songs.length > 0
+                  ? `${getTimeGreeting()} • ${formatSongCount(songs.length)}`
+                  : 'پخش‌کننده موسیقی آفلاین'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => router.push('/search')}
+            hitSlop={8}
+            style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="جستجوی موسیقی"
+          >
+            <Search size={19} color={Colors.textPrimary} />
+          </Pressable>
+          <Pressable
+            onPress={() => void handleScan()}
+            hitSlop={8}
+            style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="اسکن دستگاه برای یافتن موسیقی"
+          >
+            {isScanning ? (
+              <ActivityIndicator size="small" color={Colors.accentSecondary} />
+            ) : (
+              <RefreshCw size={18} color={Colors.textPrimary} />
+            )}
+          </Pressable>
+        </View>
+      </View>
+
+      {songs.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <EmptyState
+            icon={<Music size={30} color={Colors.accent} />}
+            title="کتابخانه موسیقی شما خالی است"
+            description="حافظه دستگاه را اسکن کنید تا تمام فایل‌های صوتی پیدا شوند، یا آهنگ‌ها را به صورت دستی اضافه کنید."
+            actionLabel={isScanning ? 'در حال اسکن...' : 'اسکن دستگاه'}
+            onAction={() => void handleScan()}
+            secondaryActionLabel="افزودن فایل"
+            onSecondaryAction={() => void handleImport()}
+          />
+        </View>
+      ) : (
+        <>
+          {/* Compact Functional Quick-Action Bar */}
+          <View style={styles.quickBar}>
+            <Pressable
+              onPress={handleShuffleAll}
+              style={({ pressed }) => [styles.shuffleAllBtn, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="پخش تصادفی همه آهنگ‌ها"
+            >
+              <Shuffle size={15} color={Colors.textPrimary} />
+              <Text style={styles.shuffleAllText}>پخش تصادفی</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/library/[category]',
+                  params: { category: 'all-songs' },
+                })
+              }
+              style={({ pressed }) => [styles.allSongsBtn, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="مشاهده همه آهنگ‌ها"
+            >
+              <Music size={15} color={Colors.accentSecondary} />
+              <Text style={styles.allSongsText}>همه آهنگ‌ها</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => void handleImport()}
+              style={({ pressed }) => [styles.importIconBtn, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="افزودن فایل صوتی"
+            >
+              <FolderPlus size={17} color={Colors.textSecondary} />
+            </Pressable>
+          </View>
+
+          {/* Recently Played Horizontal Row */}
+          {recentPlayedPreview.length > 0 ? (
+            <View style={styles.section}>
+              <SectionHeader
+                title="اخیراً پخش‌شده"
+                onActionPress={() =>
+                  router.push({
+                    pathname: '/library/[category]',
+                    params: { category: 'recently-played' },
+                  })
+                }
+              />
+              <FlatList
+                horizontal
+                data={recentPlayedPreview}
+                keyExtractor={(item) => `rp-${item.id}`}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalList}
+                renderItem={({ item, index }) => (
+                  <Pressable
+                    onPress={() => void playQueue(recentPlayedPreview, index, false)}
+                    style={({ pressed }) => [
+                      styles.recentCard,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <AlbumArtwork
+                      uri={item.artworkUri}
+                      size={Layout.horizontalCardWidth}
+                      borderRadius={Radii.md}
+                    />
+                    <Text style={styles.recentTitle} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.recentArtist} numberOfLines={1}>
+                      {localizeMetadata(item.artist, 'هنرمند ناشناس')}
+                    </Text>
+                  </Pressable>
+                )}
+              />
+            </View>
+          ) : null}
+
+          {/* Your Playlists Horizontal Row */}
+          <View style={styles.section}>
+            <SectionHeader
+              title="پلی‌لیست‌های شما"
+              onActionPress={() => router.push('/(tabs)/playlists')}
+            />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalList}
+            >
+              <PlaylistCard
+                title="علاقه‌مندی‌ها"
+                songCount={favoriteSongs.length}
+                isFavorites
+                width={Layout.horizontalCardWidth}
+                artworkHeight={106}
+                onPress={() => router.push('/(tabs)/favorites')}
+              />
+              {playlists.slice(0, 8).map((pl) => (
+                <PlaylistCard
+                  key={pl.id}
+                  title={pl.name}
+                  songCount={pl.songCount}
+                  artworkUri={pl.artworkUri}
+                  coverUris={pl.coverUris}
+                  width={Layout.horizontalCardWidth}
+                  artworkHeight={106}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/playlist/[id]',
+                      params: { id: pl.id },
+                    })
+                  }
+                />
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* All Songs Header (sorted by date added) */}
+          <View style={styles.allSongsHeader}>
+            <View style={styles.allSongsTitleWrap}>
+              <Text style={styles.allSongsHeading}>همه آهنگ‌ها</Text>
+              <Text style={styles.allSongsSub}>
+                {formatSongCount(allSongsByDate.length)} • مرتب‌سازی بر اساس تاریخ افزودن
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => setDateOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
+              hitSlop={6}
+              style={({ pressed }) => [styles.sortPill, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="تغییر ترتیب تاریخ افزودن"
+            >
+              {dateOrder === 'desc' ? (
+                <ArrowDownWideNarrow size={14} color={Colors.accentSecondary} />
+              ) : (
+                <ArrowUpNarrowWide size={14} color={Colors.accentSecondary} />
+              )}
+              <Text style={styles.sortPillText}>
+                {dateOrder === 'desc' ? 'جدیدترین' : 'قدیمی‌ترین'}
+              </Text>
+            </Pressable>
+          </View>
+        </>
+      )}
+    </>
+  );
+
   return (
     <ScreenContainer>
-      <ScrollView
+      <FlatList
+        data={songs.length > 0 ? allSongsByDate : []}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={listHeader}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={15}
+        maxToRenderPerBatch={15}
+        windowSize={9}
         contentContainerStyle={[
           styles.scrollContent,
           selection.isSelectionMode && styles.scrollWithSelectionBar,
         ]}
-      >
-        {/* Clean Branded App Header */}
-        <View style={styles.header}>
-          <View style={styles.brandRow}>
-            <View style={styles.logoFrame}>
-              <Image
-                source={AVIN_LOGO}
-                style={styles.logoImage}
-                contentFit="cover"
-              />
-            </View>
-            <View style={styles.brandTextWrap}>
-              <Text style={styles.brandName}>آوین</Text>
-              <Text style={styles.brandMeta} numberOfLines={1}>
-                {isScanning && scanProgress
-                  ? `در حال اسکن ${formatNumber(scanProgress.scanned)}${scanProgress.total > 0 ? ` از ${formatNumber(scanProgress.total)}` : ''}...`
-                  : songs.length > 0
-                    ? `${getTimeGreeting()} • ${formatSongCount(songs.length)}`
-                    : 'پخش‌کننده موسیقی آفلاین'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => router.push('/search')}
-              hitSlop={8}
-              style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
-              accessibilityRole="button"
-              accessibilityLabel="جستجوی موسیقی"
-            >
-              <Search size={19} color={Colors.textPrimary} />
-            </Pressable>
-            <Pressable
-              onPress={() => void handleScan()}
-              hitSlop={8}
-              style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
-              accessibilityRole="button"
-              accessibilityLabel="اسکن دستگاه برای یافتن موسیقی"
-            >
-              {isScanning ? (
-                <ActivityIndicator size="small" color={Colors.accentSecondary} />
-              ) : (
-                <RefreshCw size={18} color={Colors.textPrimary} />
-              )}
-            </Pressable>
-          </View>
-        </View>
-
-        {songs.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <EmptyState
-              icon={<Music size={30} color={Colors.accent} />}
-              title="کتابخانه موسیقی شما خالی است"
-              description="حافظه دستگاه را اسکن کنید تا تمام فایل‌های صوتی پیدا شوند، یا آهنگ‌ها را به صورت دستی اضافه کنید."
-              actionLabel={isScanning ? 'در حال اسکن...' : 'اسکن دستگاه'}
-              onAction={() => void handleScan()}
-              secondaryActionLabel="افزودن فایل"
-              onSecondaryAction={() => void handleImport()}
-            />
-          </View>
-        ) : (
-          <>
-            {/* Compact Functional Quick-Action Bar */}
-            <View style={styles.quickBar}>
-              <Pressable
-                onPress={handleShuffleAll}
-                style={({ pressed }) => [styles.shuffleAllBtn, pressed && styles.pressed]}
-                accessibilityRole="button"
-                accessibilityLabel="پخش تصادفی همه آهنگ‌ها"
-              >
-                <Shuffle size={15} color={Colors.textPrimary} />
-                <Text style={styles.shuffleAllText}>پخش تصادفی</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() =>
-                  router.push({
-                    pathname: '/library/[category]',
-                    params: { category: 'all-songs' },
-                  })
-                }
-                style={({ pressed }) => [styles.allSongsBtn, pressed && styles.pressed]}
-                accessibilityRole="button"
-                accessibilityLabel="مشاهده همه آهنگ‌ها"
-              >
-                <Music size={15} color={Colors.accentSecondary} />
-                <Text style={styles.allSongsText}>همه آهنگ‌ها</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => void handleImport()}
-                style={({ pressed }) => [styles.importIconBtn, pressed && styles.pressed]}
-                accessibilityRole="button"
-                accessibilityLabel="افزودن فایل صوتی"
-              >
-                <FolderPlus size={17} color={Colors.textSecondary} />
-              </Pressable>
-            </View>
-
-            {/* Recently Played Horizontal Row */}
-            {recentPlayedPreview.length > 0 ? (
-              <View style={styles.section}>
-                <SectionHeader
-                  title="اخیراً پخش‌شده"
-                  onActionPress={() =>
-                    router.push({
-                      pathname: '/library/[category]',
-                      params: { category: 'recently-played' },
-                    })
-                  }
-                />
-                <FlatList
-                  horizontal
-                  data={recentPlayedPreview}
-                  keyExtractor={(item) => `rp-${item.id}`}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalList}
-                  renderItem={({ item, index }) => (
-                    <Pressable
-                      onPress={() => void playQueue(recentPlayedPreview, index, false)}
-                      style={({ pressed }) => [
-                        styles.recentCard,
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <AlbumArtwork
-                        uri={item.artworkUri}
-                        size={Layout.horizontalCardWidth}
-                        borderRadius={Radii.md}
-                      />
-                      <Text style={styles.recentTitle} numberOfLines={1}>
-                        {item.title}
-                      </Text>
-                      <Text style={styles.recentArtist} numberOfLines={1}>
-                        {localizeMetadata(item.artist, 'هنرمند ناشناس')}
-                      </Text>
-                    </Pressable>
-                  )}
-                />
-              </View>
-            ) : null}
-
-            {/* Your Playlists Horizontal Row */}
-            <View style={styles.section}>
-              <SectionHeader
-                title="پلی‌لیست‌های شما"
-                onActionPress={() => router.push('/(tabs)/playlists')}
-              />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.horizontalList}
-              >
-                <PlaylistCard
-                  title="علاقه‌مندی‌ها"
-                  songCount={favoriteSongs.length}
-                  isFavorites
-                  width={Layout.horizontalCardWidth}
-                  artworkHeight={106}
-                  onPress={() => router.push('/(tabs)/favorites')}
-                />
-                {playlists.slice(0, 8).map((pl) => (
-                  <PlaylistCard
-                    key={pl.id}
-                    title={pl.name}
-                    songCount={pl.songCount}
-                    artworkUri={pl.artworkUri}
-                    coverUris={pl.coverUris}
-                    width={Layout.horizontalCardWidth}
-                    artworkHeight={106}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/playlist/[id]',
-                        params: { id: pl.id },
-                      })
-                    }
-                  />
-                ))}
-              </ScrollView>
-            </View>
-
-            {/* Recently Added Section */}
-            <View style={styles.section}>
-              <SectionHeader
-                title="تازه اضافه‌شده"
-                onActionPress={() =>
-                  router.push({
-                    pathname: '/library/[category]',
-                    params: { category: 'recently-added' },
-                  })
-                }
-              />
-              {recentAddedPreview.map((song, idx) => (
-                <SongRow
-                  key={song.id}
-                  song={song}
-                  showAlbum
-                  isActive={currentSong?.id === song.id}
-                  selectionMode={selection.isSelectionMode}
-                  isSelected={selection.selectedIds.has(song.id)}
-                  onPress={() => {
-                    if (selection.isSelectionMode) {
-                      selection.toggleSelect(song.id);
-                    } else {
-                      void playQueue(recentAddedPreview, idx, false);
-                    }
-                  }}
-                  onLongPress={() => selection.enterSelection(song.id)}
-                  onMorePress={() => setSelectedSong(song)}
-                />
-              ))}
-            </View>
-          </>
+        renderItem={({ item, index }) => (
+          <SongRow
+            song={item}
+            showAlbum
+            isActive={currentSong?.id === item.id}
+            selectionMode={selection.isSelectionMode}
+            isSelected={selection.selectedIds.has(item.id)}
+            onPress={() => {
+              if (selection.isSelectionMode) {
+                selection.toggleSelect(item.id);
+              } else {
+                void playQueue(allSongsByDate, index, false);
+              }
+            }}
+            onLongPress={() => selection.enterSelection(item.id)}
+            onMorePress={() => setSelectedSong(item)}
+          />
         )}
-      </ScrollView>
+      />
 
       <SelectionActionBar
         selectedSongs={selection.selectedSongs}
@@ -511,5 +541,50 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     writingDirection: 'rtl',
     width: '100%',
+  },
+  allSongsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Layout.screenPadding,
+    marginBottom: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  allSongsTitleWrap: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  allSongsHeading: {
+    fontFamily: Fonts.bold,
+    fontSize: 17,
+    lineHeight: 26,
+    color: Colors.textPrimary,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  allSongsSub: {
+    fontFamily: Fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 18,
+    color: Colors.textSecondary,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+  },
+  sortPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
+    borderRadius: Radii.full,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  sortPillText: {
+    fontFamily: Fonts.medium,
+    fontSize: 12,
+    lineHeight: 18,
+    color: Colors.accentSecondary,
   },
 });

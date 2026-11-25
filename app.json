@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "آوین",
-    "slug": "avin-music-player",
+    "slug": "pulse-music-player",
     "scheme": "avin",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -69,6 +69,9 @@
         "expo-build-properties",
         {
           "android": {
+            "buildArchs": [
+              "arm64-v8a"
+            ],
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
             "enablePngCrunchInReleaseBuilds": true

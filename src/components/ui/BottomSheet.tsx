@@ -50,11 +50,14 @@ export function BottomSheet({
       statusBarTranslucent
       navigationBarTranslucent
     >
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <View style={styles.backdrop}>
         <Pressable
-          style={[styles.sheet, { paddingBottom: bottomPadding }]}
-          onPress={(e) => e.stopPropagation()}
-        >
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="بستن"
+        />
+        <View style={[styles.sheet, { paddingBottom: bottomPadding }]}>
           <View style={styles.handle} />
           {title ? (
             <View style={styles.header}>
@@ -71,6 +74,8 @@ export function BottomSheet({
 
           <ScrollView
             bounces={false}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
             style={styles.content}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
@@ -122,8 +127,8 @@ export function BottomSheet({
             ))}
             {children}
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }

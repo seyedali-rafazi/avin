@@ -85,7 +85,10 @@ export function EditSongModal({ song, visible, onClose }: EditSongModalProps) {
   return (
     <AppModal visible={visible} onClose={onClose} title="ویرایش مشخصات و کاور">
       <ScrollView
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator
+        nestedScrollEnabled
+        bounces={false}
+        keyboardShouldPersistTaps="handled"
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
       >
@@ -170,11 +173,12 @@ function Field({
 
 const styles = StyleSheet.create({
   scroll: {
-    maxHeight: 380,
+    flexGrow: 0,
+    flexShrink: 1,
   },
   scrollContent: {
     gap: Spacing.sm,
-    paddingBottom: Spacing.sm,
+    paddingBottom: Spacing.md,
   },
   artworkRow: {
     flexDirection: 'row',
