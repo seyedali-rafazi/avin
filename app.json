@@ -5,7 +5,7 @@
     "scheme": "avin",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/Avin-logo.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#050505",
     "ios": {
@@ -21,10 +21,8 @@
     "android": {
       "package": "com.pulsemusic.player",
       "adaptiveIcon": {
-        "backgroundColor": "#050505",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#000000",
+        "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "permissions": [
         "android.permission.READ_MEDIA_AUDIO",
@@ -78,7 +76,15 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#000000",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
