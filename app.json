@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Avin",
+    "name": "آوین",
     "slug": "avin-music-player",
     "scheme": "avin",
     "version": "1.0.0",
@@ -15,7 +15,7 @@
         "UIBackgroundModes": [
           "audio"
         ],
-        "NSAppleMusicUsageDescription": "Allow Avin to access your local music library."
+        "NSAppleMusicUsageDescription": "اجازه دسترسی آوین به کتابخانه موسیقی دستگاه شما."
       }
     },
     "android": {
@@ -56,7 +56,7 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow Avin to discover audio files stored on your device.",
+          "photosPermission": "اجازه دسترسی آوین برای یافتن فایل‌های صوتی ذخیره‌شده روی دستگاه شما.",
           "savePhotosPermission": false,
           "granularPermissions": [
             "audio"
@@ -74,7 +74,8 @@
             "enablePngCrunchInReleaseBuilds": true
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

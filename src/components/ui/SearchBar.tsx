@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, TextInput, View, type ViewStyle } from 'react-native';
 import { Search, X } from 'lucide-react-native';
-import { Colors, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Radii, Spacing } from '@/theme';
 
 interface SearchBarProps {
   value: string;
@@ -17,7 +17,7 @@ interface SearchBarProps {
 export function SearchBar({
   value,
   onChangeText,
-  placeholder = 'Search songs, artists, albums...',
+  placeholder = 'جستجو در آهنگ‌ها، هنرمندان و آلبوم‌ها...',
   autoFocus = false,
   onSubmitEditing,
   onPressInput,
@@ -41,6 +41,7 @@ export function SearchBar({
         selectionColor={Colors.accent}
         autoCorrect={false}
         autoCapitalize="none"
+        textAlign="right"
       />
       {value.length > 0 && editable ? (
         <Pressable
@@ -48,7 +49,7 @@ export function SearchBar({
           hitSlop={8}
           style={styles.clearBtn}
           accessibilityRole="button"
-          accessibilityLabel="Clear search"
+          accessibilityLabel="پاک کردن جستجو"
         >
           <X size={13} color={Colors.background} />
         </Pressable>
@@ -73,15 +74,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.surfaceElevated,
     borderRadius: Radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     paddingHorizontal: Spacing.md,
-    height: 44,
+    height: 46,
     gap: Spacing.sm,
   },
   input: {
     flex: 1,
+    fontFamily: Fonts.regular,
     color: Colors.textPrimary,
-    fontSize: 14,
+    fontSize: 13.5,
     paddingVertical: 0,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   clearBtn: {
     width: 18,

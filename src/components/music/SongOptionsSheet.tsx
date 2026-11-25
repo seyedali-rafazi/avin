@@ -14,7 +14,7 @@ import { BottomSheet, type SheetOption } from '@/components/ui/BottomSheet';
 import { useLibraryStore, usePlayerStore } from '@/stores';
 import { Colors, Spacing, Typography } from '@/theme';
 import type { Song } from '@/types/music';
-import { formatDuration, formatFileSize } from '@/utils/format';
+import { formatDuration, formatFileSize, localizeMetadata } from '@/utils/format';
 
 interface SongOptionsSheetProps {
   song: Song | null;
@@ -39,27 +39,32 @@ export function SongOptionsSheet({
 
   if (!song) return null;
 
+  const artistName = localizeMetadata(song.artist, 'هنرمند ناشناس');
+  const albumName = localizeMetadata(song.album, 'آلبوم ناشناس');
+  const genreName = localizeMetadata(song.genre, 'سبک ناشناس');
+  const folderName = localizeMetadata(song.folder, 'حافظه دستگاه');
+
   const handleShare = () => {
     void Share.share({
       title: song.title,
-      message: `${song.title} — ${song.artist}`,
+      message: `${song.title} — ${artistName}`,
       url: song.fileUri,
     });
   };
 
   const options: SheetOption[] = [
     {
-      label: 'Play Next',
+      label: 'پخش بعدی',
       icon: <Play size={19} color={Colors.textPrimary} />,
       onPress: () => playNext(song),
     },
     {
-      label: 'Add to Queue',
+      label: 'افزودن به صف پخش',
       icon: <ListEnd size={19} color={Colors.textPrimary} />,
       onPress: () => addToQueue(song),
     },
     {
-      label: isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
+      label: isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها',
       icon: (
         <Heart
           size={19}
@@ -70,17 +75,17 @@ export function SongOptionsSheet({
       onPress: () => toggleFavorite(song.id),
     },
     {
-      label: 'Add to Playlist',
+      label: 'افزودن به پلی‌لیست',
       icon: <ListPlus size={19} color={Colors.textPrimary} />,
       onPress: () => setShowPlaylistPicker(true),
     },
     {
-      label: 'Share',
+      label: 'اشتراک‌گذاری',
       icon: <Share2 size={19} color={Colors.textPrimary} />,
       onPress: handleShare,
     },
     {
-      label: 'Song Details',
+      label: 'مشخصات آهنگ',
       icon: <Info size={19} color={Colors.textPrimary} />,
       onPress: () => setShowInfo(true),
     },
@@ -88,7 +93,7 @@ export function SongOptionsSheet({
 
   if (onRemoveFromPlaylist) {
     options.push({
-      label: 'Remove from Playlist',
+      label: 'حذف از پلی‌لیست',
       icon: <Trash2 size={19} color={Colors.danger} />,
       destructive: true,
       onPress: onRemoveFromPlaylist,
@@ -101,7 +106,7 @@ export function SongOptionsSheet({
         visible={visible}
         onClose={onClose}
         title={song.title}
-        subtitle={`${song.artist} • ${song.album}`}
+        subtitle={`${artistName} • ${albumName}`}
         options={options}
       />
 
@@ -114,16 +119,16 @@ export function SongOptionsSheet({
       <BottomSheet
         visible={showInfo}
         onClose={() => setShowInfo(false)}
-        title="Track Information"
+        title="مشخصات آهنگ"
       >
         <View style={styles.infoBlock}>
-          <InfoRow label="Title" value={song.title} />
-          <InfoRow label="Artist" value={song.artist} />
-          <InfoRow label="Album" value={song.album} />
-          <InfoRow label="Genre" value={song.genre} />
-          <InfoRow label="Duration" value={formatDuration(song.duration)} />
-          <InfoRow label="Folder" value={song.folder} />
-          <InfoRow label="File Size" value={formatFileSize(song.fileSize)} />
+          <InfoRow label="عنوان" value={song.title} />
+          <InfoRow label="هنرمند" value={artistName} />
+          <InfoRow label="آلبوم" value={albumName} />
+          <InfoRow label="سبک" value={genreName} />
+          <InfoRow label="مدت زمان" value={formatDuration(song.duration)} />
+          <InfoRow label="پوشه" value={folderName} />
+          <InfoRow label="حجم فایل" value={formatFileSize(song.fileSize)} />
         </View>
       </BottomSheet>
     </>
@@ -150,6 +155,7 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
     gap: Spacing.lg,
   },
   infoLabel: {
@@ -161,6 +167,6 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: Colors.textPrimary,
     flex: 1,
-    textAlign: 'right',
+    textAlign: 'left',
   },
 });

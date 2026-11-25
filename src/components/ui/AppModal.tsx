@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text } from 'react-native';
 import { Colors, Radii, Spacing, Typography } from '@/theme';
 
 interface AppModalProps {
@@ -35,6 +35,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: Spacing.xl,
+    direction: 'rtl',
   },
   card: {
     width: '100%',
@@ -44,6 +45,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     borderWidth: 1,
     borderColor: Colors.border,
+    direction: 'rtl',
   },
   title: {
     ...Typography.sectionTitle,

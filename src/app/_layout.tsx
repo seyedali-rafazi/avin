@@ -3,7 +3,15 @@ import { StatusBar } from 'expo-status-bar';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import {
+  useFonts,
+  Vazirmatn_400Regular,
+  Vazirmatn_500Medium,
+  Vazirmatn_600SemiBold,
+  Vazirmatn_700Bold,
+  Vazirmatn_800ExtraBold,
+} from '@expo-google-fonts/vazirmatn';
 import { initializeDatabase } from '@/database/client';
 import {
   useLibraryStore,
@@ -16,6 +24,13 @@ import { Colors } from '@/theme';
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
+  const [fontsLoaded, fontError] = useFonts({
+    Vazirmatn_400Regular,
+    Vazirmatn_500Medium,
+    Vazirmatn_600SemiBold,
+    Vazirmatn_700Bold,
+    Vazirmatn_800ExtraBold,
+  });
 
   useEffect(() => {
     try {
@@ -32,8 +47,8 @@ export default function RootLayout() {
     }
   }, []);
 
-  if (!ready) {
-    return null;
+  if (!ready || (!fontsLoaded && !fontError)) {
+    return <View style={styles.root} />;
   }
 
   return (
@@ -43,8 +58,8 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: Colors.background },
-            animation: 'slide_from_right',
+            contentStyle: { backgroundColor: Colors.background, direction: 'rtl' },
+            animation: 'slide_from_left',
           }}
         >
           <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
@@ -77,5 +92,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: Colors.background,
+    direction: 'rtl',
   },
 });

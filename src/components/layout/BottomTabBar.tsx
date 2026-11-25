@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Tabs } from 'expo-router';
 import { Heart, Home, Library, ListMusic, Settings } from 'lucide-react-native';
 import { MiniPlayer } from '@/components/player/MiniPlayer';
-import { Colors, Spacing, Typography } from '@/theme';
+import { Colors, Fonts, Spacing, Typography } from '@/theme';
 
 type TabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>['tabBar']>>[0];
 
@@ -14,11 +14,11 @@ const TAB_CONFIG: Record<
     Icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
   }
 > = {
-  index: { label: 'Home', Icon: Home },
-  library: { label: 'Library', Icon: Library },
-  playlists: { label: 'Playlists', Icon: ListMusic },
-  favorites: { label: 'Favorites', Icon: Heart },
-  settings: { label: 'Settings', Icon: Settings },
+  index: { label: 'خانه', Icon: Home },
+  library: { label: 'کتابخانه', Icon: Library },
+  playlists: { label: 'پلی‌لیست‌ها', Icon: ListMusic },
+  favorites: { label: 'علاقه‌مندی‌ها', Icon: Heart },
+  settings: { label: 'تنظیمات', Icon: Settings },
 };
 
 export function BottomTabBar({
@@ -42,7 +42,7 @@ export function BottomTabBar({
           if (!config) return null;
 
           const isFocused = state.index === index;
-          const color = isFocused ? Colors.accent : Colors.textMuted;
+          const color = isFocused ? Colors.accentSecondary : Colors.textMuted;
           const IconComponent = config.Icon;
 
           const onPress = () => {
@@ -75,12 +75,17 @@ export function BottomTabBar({
               onLongPress={onLongPress}
               style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}
             >
-              <IconComponent
-                size={21}
-                color={color}
-                strokeWidth={isFocused ? 2.2 : 1.8}
-              />
-              <Text style={[styles.label, { color }]} numberOfLines={1}>
+              <View style={[styles.iconPill, isFocused && styles.iconPillActive]}>
+                <IconComponent
+                  size={20}
+                  color={color}
+                  strokeWidth={isFocused ? 2.2 : 1.8}
+                />
+              </View>
+              <Text
+                style={[styles.label, isFocused && styles.labelActive, { color }]}
+                numberOfLines={1}
+              >
                 {config.label}
               </Text>
             </Pressable>
@@ -94,26 +99,41 @@ export function BottomTabBar({
 const styles = StyleSheet.create({
   outer: {
     backgroundColor: Colors.tabBarBackground,
+    direction: 'rtl',
   },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: Colors.tabBarBackground,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.divider,
-    paddingTop: Spacing.sm,
+    paddingTop: 6,
     paddingHorizontal: Spacing.xs,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 3,
     paddingVertical: 2,
+  },
+  iconPill: {
+    width: 44,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconPillActive: {
+    backgroundColor: Colors.accentMuted,
   },
   pressed: {
     opacity: 0.7,
   },
   label: {
     ...Typography.tabLabel,
+    textAlign: 'center',
+  },
+  labelActive: {
+    fontFamily: Fonts.semiBold,
   },
 });

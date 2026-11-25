@@ -10,14 +10,15 @@ import {
   SettingsSection,
 } from '@/components';
 import { APP_INFO } from '@/constants/audio';
-import { Colors, Layout, Radii, Spacing, Typography } from '@/theme';
+import { Colors, Fonts, Layout, Radii, Spacing, Typography } from '@/theme';
+import { toPersianDigits } from '@/utils/format';
 
 const AVIN_LOGO = require('../../../assets/Avin-logo.png');
 
 export default function AboutScreen() {
   return (
     <ScreenContainer edges={['top', 'bottom']}>
-      <ScreenHeader title="About" onBack={() => router.back()} />
+      <ScreenHeader title="درباره برنامه" onBack={() => router.back()} />
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.brandCardWrap}>
@@ -32,19 +33,21 @@ export default function AboutScreen() {
               style={styles.logoImage}
               contentFit="cover"
             />
-            <Text style={Typography.greeting}>{APP_INFO.name}</Text>
+            <Text style={styles.brandName}>{APP_INFO.name}</Text>
             <Text style={styles.tagline}>{APP_INFO.tagline}</Text>
             <View style={styles.versionPill}>
-              <Text style={styles.versionText}>Version {APP_INFO.version}</Text>
+              <Text style={styles.versionText}>
+                نسخه {toPersianDigits(APP_INFO.version)}
+              </Text>
             </View>
           </LinearGradient>
         </View>
 
-        <SettingsSection title="Application">
-          <SettingsRow title="Architecture" valueText="Offline-First Local" />
-          <SettingsRow title="Audio Engine" valueText="Expo Audio" />
-          <SettingsRow title="Database" valueText="SQLite + Drizzle ORM" />
-          <SettingsRow title="Privacy" valueText="100% On-Device" isLast />
+        <SettingsSection title="مشخصات برنامه">
+          <SettingsRow title="معماری" valueText="آفلاین و محلی" />
+          <SettingsRow title="موتور صوتی" valueText="پخش بومی پیشرفته" />
+          <SettingsRow title="پایگاه‌داده" valueText="ذخیره‌سازی محلی سریع" />
+          <SettingsRow title="حریم خصوصی" valueText="۱۰۰٪ روی دستگاه شما" isLast />
         </SettingsSection>
       </ScrollView>
     </ScreenContainer>
@@ -64,12 +67,21 @@ const styles = StyleSheet.create({
     padding: Spacing.xxl,
     alignItems: 'center',
     gap: Spacing.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(176, 106, 255, 0.25)',
   },
   logoImage: {
     width: 72,
     height: 72,
     borderRadius: 18,
     marginBottom: Spacing.xs,
+  },
+  brandName: {
+    fontFamily: Fonts.extraBold,
+    fontSize: 22,
+    lineHeight: 34,
+    color: Colors.textPrimary,
+    textAlign: 'center',
   },
   tagline: {
     ...Typography.subtitle,
@@ -83,8 +95,9 @@ const styles = StyleSheet.create({
     borderRadius: Radii.full,
   },
   versionText: {
+    fontFamily: Fonts.semiBold,
     fontSize: 12,
-    fontWeight: '600',
+    lineHeight: 18,
     color: Colors.textPrimary,
   },
 });

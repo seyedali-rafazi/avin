@@ -8,8 +8,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Check, MoreVertical } from 'lucide-react-native';
-import { Colors, Layout, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import type { Song } from '@/types/music';
+import { isUnknownAlbum, localizeMetadata } from '@/utils/format';
 import { AlbumArtwork } from './AlbumArtwork';
 
 interface SongRowProps {
@@ -78,7 +79,7 @@ export const SongRow = React.memo(function SongRow({
 
   const checkboxWrapStyle = useAnimatedStyle(() => ({
     width: interpolate(selectModeAnim.value, [0, 1], [0, 26]),
-    marginRight: interpolate(selectModeAnim.value, [0, 1], [0, 4]),
+    marginStart: interpolate(selectModeAnim.value, [0, 1], [0, 2]),
     opacity: selectModeAnim.value,
     transform: [{ scale: interpolate(selectModeAnim.value, [0, 1], [0.5, 1]) }],
   }));
@@ -88,10 +89,12 @@ export const SongRow = React.memo(function SongRow({
     opacity: checkScale.value,
   }));
 
+  const artistName = localizeMetadata(song.artist, 'هنرمند ناشناس');
+  const albumName = localizeMetadata(song.album, 'آلبوم ناشناس');
   const subtitle =
-    showAlbum && song.album !== 'Unknown Album'
-      ? `${song.artist} • ${song.album}`
-      : song.artist;
+    showAlbum && !isUnknownAlbum(song.album)
+      ? `${artistName} • ${albumName}`
+      : artistName;
 
   return (
     <Animated.View style={rowAnimStyle}>
@@ -143,7 +146,7 @@ export const SongRow = React.memo(function SongRow({
             hitSlop={10}
             style={({ pressed }) => [styles.moreBtn, pressed && styles.pressedIcon]}
             accessibilityRole="button"
-            accessibilityLabel={`More options for ${song.title}`}
+            accessibilityLabel={`گزینه‌های بیشتر برای ${song.title}`}
           >
             <MoreVertical size={18} color={Colors.textSecondary} />
           </Pressable>
@@ -191,24 +194,32 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   title: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontFamily: Fonts.medium,
+    fontSize: 14,
+    lineHeight: 22,
     color: Colors.textPrimary,
-    marginBottom: 3,
+    marginBottom: 2,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   activeTitle: {
+    fontFamily: Fonts.semiBold,
     color: Colors.accentSecondary,
-    fontWeight: '600',
   },
   subtitle: {
-    fontSize: 12,
+    fontFamily: Fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 18,
     color: Colors.textSecondary,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   highlightText: {
+    fontFamily: Fonts.bold,
     color: Colors.accentSecondary,
-    fontWeight: '700',
   },
   moreBtn: {
     width: 34,

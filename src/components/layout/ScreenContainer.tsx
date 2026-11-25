@@ -25,9 +25,11 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
+    direction: 'rtl',
   },
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+    direction: 'rtl',
   },
 });

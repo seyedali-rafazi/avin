@@ -37,9 +37,9 @@ import {
 } from '@/components';
 import { useSongSelection } from '@/hooks/useSongSelection';
 import { useLibraryStore, usePlayerStore, usePlaylistStore } from '@/stores';
-import { Colors, Layout, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import type { Song } from '@/types/music';
-import { formatSongCount } from '@/utils/format';
+import { formatNumber, formatSongCount, localizeMetadata } from '@/utils/format';
 import { reorderList } from '@/utils/queue';
 
 export default function PlaylistDetailScreen() {
@@ -81,11 +81,11 @@ export default function PlaylistDetailScreen() {
   if (!playlist || !id) {
     return (
       <ScreenContainer edges={['top', 'bottom']}>
-        <ScreenHeader title="Playlist" onBack={() => router.back()} />
+        <ScreenHeader title="پلی‌لیست" onBack={() => router.back()} />
         <EmptyState
           icon={<ListMusic size={28} color={Colors.accent} />}
-          title="Playlist Not Found"
-          description="This playlist may have been deleted."
+          title="پلی‌لیست پیدا نشد"
+          description="ممکن است این پلی‌لیست حذف شده باشد."
         />
       </ScreenContainer>
     );
@@ -128,12 +128,12 @@ export default function PlaylistDetailScreen() {
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete Playlist',
-      `Delete "${playlist.name}"? Your audio files will remain on your device.`,
+      'حذف پلی‌لیست',
+      `پلی‌لیست «${playlist.name}» حذف شود؟ فایل‌های صوتی شما روی دستگاه باقی می‌مانند.`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'انصراف', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'حذف',
           style: 'destructive',
           onPress: () => {
             deletePlaylist(id);
@@ -155,12 +155,12 @@ export default function PlaylistDetailScreen() {
             <IconButton
               icon={<Plus size={22} color={Colors.textPrimary} />}
               onPress={() => setAddModalVisible(true)}
-              accessibilityLabel="Add songs to playlist"
+              accessibilityLabel="افزودن آهنگ به پلی‌لیست"
             />
             <IconButton
               icon={<MoreVertical size={20} color={Colors.textPrimary} />}
               onPress={() => setMenuVisible(true)}
-              accessibilityLabel="Playlist options"
+              accessibilityLabel="گزینه‌های پلی‌لیست"
             />
           </View>
         }
@@ -169,9 +169,9 @@ export default function PlaylistDetailScreen() {
       {songs.length === 0 ? (
         <EmptyState
           icon={<ListMusic size={30} color={Colors.accent} />}
-          title="No Songs in Playlist"
-          description="Add tracks from your library to build this playlist."
-          actionLabel="Add Songs"
+          title="این پلی‌لیست خالی است"
+          description="آهنگ‌های دلخواهتان را از کتابخانه به این پلی‌لیست اضافه کنید."
+          actionLabel="افزودن آهنگ"
           onAction={() => setAddModalVisible(true)}
         />
       ) : (
@@ -188,7 +188,7 @@ export default function PlaylistDetailScreen() {
               />
               <View style={styles.actionsRow}>
                 <PrimaryButton
-                  label="Play"
+                  label="پخش"
                   icon={<Play size={15} color={Colors.textPrimary} fill={Colors.textPrimary} />}
                   onPress={() => void playQueue(songs, 0, false)}
                   style={styles.flexBtn}
@@ -198,7 +198,7 @@ export default function PlaylistDetailScreen() {
                   style={({ pressed }) => [styles.shuffleBtn, pressed && styles.pressed]}
                 >
                   <Shuffle size={16} color={Colors.accentSecondary} />
-                  <Text style={styles.shuffleText}>Shuffle</Text>
+                  <Text style={styles.shuffleText}>پخش تصادفی</Text>
                 </Pressable>
               </View>
             </View>
@@ -265,15 +265,15 @@ export default function PlaylistDetailScreen() {
           selection.allSelected ? selection.clearSelection() : selection.selectAll()
         }
         onCancel={selection.clearSelection}
-        deleteLabel="Remove"
+        deleteLabel="حذف"
         onCustomDelete={(chosen) => {
           Alert.alert(
-            'Remove from Playlist',
-            `Remove ${chosen.length} ${chosen.length === 1 ? 'song' : 'songs'} from "${playlist.name}"?`,
+            'حذف از پلی‌لیست',
+            `${formatSongCount(chosen.length)} از پلی‌لیست «${playlist.name}» حذف شود؟`,
             [
-              { text: 'Cancel', style: 'cancel' },
+              { text: 'انصراف', style: 'cancel' },
               {
-                text: 'Remove',
+                text: 'حذف',
                 style: 'destructive',
                 onPress: () => {
                   for (const s of chosen) {
@@ -294,17 +294,17 @@ export default function PlaylistDetailScreen() {
         title={playlist.name}
         options={[
           {
-            label: 'Add Songs',
+            label: 'افزودن آهنگ',
             icon: <Plus size={18} color={Colors.textPrimary} />,
             onPress: () => setAddModalVisible(true),
           },
           {
-            label: reorderMode ? 'Done Reordering' : 'Reorder Songs',
+            label: reorderMode ? 'پایان چیدمان' : 'تغییر ترتیب آهنگ‌ها',
             icon: <ListMusic size={18} color={Colors.accentSecondary} />,
             onPress: () => setReorderMode((v) => !v),
           },
           {
-            label: 'Rename Playlist',
+            label: 'تغییر نام پلی‌لیست',
             icon: <Edit3 size={18} color={Colors.textPrimary} />,
             onPress: () => {
               setRenameValue(playlist.name);
@@ -312,7 +312,7 @@ export default function PlaylistDetailScreen() {
             },
           },
           {
-            label: 'Delete Playlist',
+            label: 'حذف پلی‌لیست',
             icon: <Trash2 size={18} color={Colors.danger} />,
             destructive: true,
             onPress: handleDelete,
@@ -327,17 +327,17 @@ export default function PlaylistDetailScreen() {
           setSelectedToAdd(new Set());
           setAddModalVisible(false);
         }}
-        title="Add Songs"
+        title="افزودن آهنگ"
         subtitle={
           selectedToAdd.size > 0
-            ? `${selectedToAdd.size} selected`
-            : 'Select tracks from your library'
+            ? `${formatNumber(selectedToAdd.size)} آهنگ انتخاب شده`
+            : 'آهنگ‌ها را از کتابخانه انتخاب کنید'
         }
       >
         {availableToAdd.length === 0 ? (
           <View style={styles.emptyPicker}>
             <Text style={styles.emptyPickerText}>
-              All songs from your library are already in this playlist.
+              همه آهنگ‌های کتابخانه در حال حاضر در این پلی‌لیست وجود دارند.
             </Text>
           </View>
         ) : (
@@ -356,7 +356,7 @@ export default function PlaylistDetailScreen() {
                       {song.title}
                     </Text>
                     <Text style={styles.pickerArtist} numberOfLines={1}>
-                      {song.artist}
+                      {localizeMetadata(song.artist, 'هنرمند ناشناس')}
                     </Text>
                   </View>
                   <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
@@ -367,7 +367,11 @@ export default function PlaylistDetailScreen() {
             })}
             <View style={styles.pickerFooter}>
               <PrimaryButton
-                label={`Add ${selectedToAdd.size > 0 ? `(${selectedToAdd.size})` : ''}`}
+                label={
+                  selectedToAdd.size > 0
+                    ? `افزودن (${formatNumber(selectedToAdd.size)})`
+                    : 'افزودن'
+                }
                 disabled={selectedToAdd.size === 0}
                 onPress={handleConfirmAddSongs}
               />
@@ -379,24 +383,27 @@ export default function PlaylistDetailScreen() {
       <AppModal
         visible={renameModalVisible}
         onClose={() => setRenameModalVisible(false)}
-        title="Rename Playlist"
+        title="تغییر نام پلی‌لیست"
       >
         <TextInput
           value={renameValue}
           onChangeText={setRenameValue}
+          placeholder="نام جدید پلی‌لیست"
+          placeholderTextColor={Colors.textMuted}
           style={styles.input}
           autoFocus
           maxLength={60}
           selectionColor={Colors.accent}
+          textAlign="right"
         />
         <View style={styles.modalActions}>
           <Pressable
             onPress={() => setRenameModalVisible(false)}
             style={styles.cancelBtn}
           >
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>انصراف</Text>
           </Pressable>
-          <PrimaryButton label="Save" size="sm" onPress={handleRename} />
+          <PrimaryButton label="ذخیره" size="sm" onPress={handleRename} />
         </View>
       </AppModal>
 
@@ -449,9 +456,10 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   shuffleText: {
+    fontFamily: Fonts.semiBold,
     color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13.5,
+    lineHeight: 22,
   },
   pressed: {
     opacity: 0.78,
@@ -472,9 +480,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyPickerText: {
+    fontFamily: Fonts.regular,
     color: Colors.textSecondary,
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: 13.5,
+    lineHeight: 22,
   },
   pickerRow: {
     flexDirection: 'row',
@@ -485,15 +495,23 @@ const styles = StyleSheet.create({
   },
   pickerMeta: {
     flex: 1,
+    alignItems: 'flex-start',
   },
   pickerTitle: {
+    fontFamily: Fonts.medium,
     color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13.5,
+    lineHeight: 22,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   pickerArtist: {
+    fontFamily: Fonts.regular,
     color: Colors.textSecondary,
-    fontSize: 12,
+    fontSize: 11.5,
+    lineHeight: 18,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   checkbox: {
     width: 22,
@@ -517,11 +535,14 @@ const styles = StyleSheet.create({
     borderRadius: Radii.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
+    fontFamily: Fonts.regular,
     color: Colors.textPrimary,
-    fontSize: 15,
+    fontSize: 14,
     borderWidth: 1,
     borderColor: Colors.border,
     marginBottom: Spacing.lg,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   modalActions: {
     flexDirection: 'row',
@@ -534,8 +555,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   cancelText: {
+    fontFamily: Fonts.medium,
     color: Colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13.5,
   },
 });

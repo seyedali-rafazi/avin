@@ -24,6 +24,12 @@ interface PlaybackControlsProps {
   onCycleRepeat: () => void;
 }
 
+const REPEAT_ACCESSIBILITY: Record<RepeatMode, string> = {
+  off: 'خاموش',
+  all: 'تکرار همه',
+  one: 'تکرار یک آهنگ',
+};
+
 export function PlaybackControls({
   isPlaying,
   isBuffering = false,
@@ -44,7 +50,7 @@ export function PlaybackControls({
         hitSlop={12}
         style={({ pressed }) => [styles.sideBtn, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={shuffle ? 'Disable shuffle' : 'Enable shuffle'}
+        accessibilityLabel={shuffle ? 'غیرفعال کردن پخش تصادفی' : 'فعال کردن پخش تصادفی'}
       >
         <Shuffle
           size={20}
@@ -58,7 +64,7 @@ export function PlaybackControls({
         hitSlop={12}
         style={({ pressed }) => [styles.skipBtn, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel="Previous track"
+        accessibilityLabel="آهنگ قبلی"
       >
         <SkipBack
           size={26}
@@ -71,7 +77,7 @@ export function PlaybackControls({
         onPress={onPlayPause}
         style={({ pressed }) => [styles.playBtn, pressed && styles.playBtnPressed]}
         accessibilityRole="button"
-        accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
+        accessibilityLabel={isPlaying ? 'توقف' : 'پخش'}
       >
         {isBuffering ? (
           <ActivityIndicator size="small" color={Colors.textPrimary} />
@@ -92,7 +98,7 @@ export function PlaybackControls({
         hitSlop={12}
         style={({ pressed }) => [styles.skipBtn, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel="Next track"
+        accessibilityLabel="آهنگ بعدی"
       >
         <SkipForward
           size={26}
@@ -106,7 +112,7 @@ export function PlaybackControls({
         hitSlop={12}
         style={({ pressed }) => [styles.sideBtn, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={`Repeat mode: ${repeatMode}`}
+        accessibilityLabel={`حالت تکرار: ${REPEAT_ACCESSIBILITY[repeatMode]}`}
       >
         <RepeatIcon
           size={20}
@@ -125,6 +131,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
     paddingHorizontal: 4,
+    direction: 'ltr',
   },
   sideBtn: {
     width: 40,

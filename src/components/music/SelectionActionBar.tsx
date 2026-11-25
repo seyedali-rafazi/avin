@@ -13,8 +13,9 @@ import {
 } from 'lucide-react-native';
 import { AddToPlaylistSheet } from '@/components/music/AddToPlaylistSheet';
 import { useLibraryStore, usePlayerStore } from '@/stores';
-import { Colors, Layout, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import type { Song } from '@/types/music';
+import { formatNumber, formatSongCount, localizeMetadata } from '@/utils/format';
 
 interface SelectionActionBarProps {
   selectedSongs: Song[];
@@ -34,7 +35,7 @@ export function SelectionActionBar({
   onToggleSelectAll,
   onCancel,
   onCustomDelete,
-  deleteLabel = 'Delete',
+  deleteLabel = 'حذف',
   insideTabScreen = false,
 }: SelectionActionBarProps) {
   const insets = useSafeAreaInsets();
@@ -58,15 +59,18 @@ export function SelectionActionBar({
       if (selectedSongs.length === 1 && firstSong) {
         await Share.share({
           title: firstSong.title,
-          message: `${firstSong.title} — ${firstSong.artist}`,
+          message: `${firstSong.title} — ${localizeMetadata(firstSong.artist, 'هنرمند ناشناس')}`,
           url: firstSong.fileUri,
         });
       } else {
         const list = selectedSongs
-          .map((s, idx) => `${idx + 1}. ${s.title} — ${s.artist}`)
+          .map(
+            (s, idx) =>
+              `${formatNumber(idx + 1)}. ${s.title} — ${localizeMetadata(s.artist, 'هنرمند ناشناس')}`
+          )
           .join('\n');
         await Share.share({
-          title: `${selectedSongs.length} Songs`,
+          title: formatSongCount(selectedSongs.length),
           message: list,
         });
       }
@@ -82,12 +86,12 @@ export function SelectionActionBar({
     }
 
     Alert.alert(
-      'Delete Songs',
-      `Remove ${selectedSongs.length} ${selectedSongs.length === 1 ? 'song' : 'songs'} from your Avin library?`,
+      'حذف آهنگ‌ها',
+      `آیا می‌خواهید ${formatSongCount(selectedSongs.length)} را از کتابخانه آوین حذف کنید؟`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'انصراف', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'حذف',
           style: 'destructive',
           onPress: () => {
             deleteSongs(songIds);
@@ -122,12 +126,12 @@ export function SelectionActionBar({
               <Square size={17} color={Colors.textSecondary} />
             )}
             <Text style={styles.selectAllText}>
-              {allSelected ? 'Deselect All' : 'Select All'}
+              {allSelected ? 'لغو همه' : 'انتخاب همه'}
             </Text>
           </Pressable>
 
           <Text style={styles.countText}>
-            {selectedSongs.length} selected
+            {formatNumber(selectedSongs.length)} انتخاب شده
           </Text>
 
           <Pressable
@@ -135,7 +139,7 @@ export function SelectionActionBar({
             hitSlop={10}
             style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]}
             accessibilityRole="button"
-            accessibilityLabel="Cancel selection"
+            accessibilityLabel="لغو انتخاب"
           >
             <X size={19} color={Colors.textSecondary} />
           </Pressable>
@@ -147,43 +151,43 @@ export function SelectionActionBar({
             onPress={handlePlay}
             style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}
             accessibilityRole="button"
-            accessibilityLabel="Play selected songs"
+            accessibilityLabel="پخش آهنگ‌های انتخاب‌شده"
           >
             <View style={[styles.iconCircle, styles.playCircle]}>
               <Play size={18} color={Colors.textPrimary} fill={Colors.textPrimary} />
             </View>
-            <Text style={styles.actionLabel}>Play</Text>
+            <Text style={styles.actionLabel}>پخش</Text>
           </Pressable>
 
           <Pressable
             onPress={() => setPlaylistSheetVisible(true)}
             style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}
             accessibilityRole="button"
-            accessibilityLabel="Add selected songs to playlist"
+            accessibilityLabel="افزودن به پلی‌لیست"
           >
             <View style={styles.iconCircle}>
               <ListPlus size={18} color={Colors.textPrimary} />
             </View>
-            <Text style={styles.actionLabel}>Add</Text>
+            <Text style={styles.actionLabel}>افزودن</Text>
           </Pressable>
 
           <Pressable
             onPress={() => void handleShare()}
             style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}
             accessibilityRole="button"
-            accessibilityLabel="Share selected songs"
+            accessibilityLabel="اشتراک‌گذاری آهنگ‌های انتخاب‌شده"
           >
             <View style={styles.iconCircle}>
               <Share2 size={18} color={Colors.textPrimary} />
             </View>
-            <Text style={styles.actionLabel}>Share</Text>
+            <Text style={styles.actionLabel}>اشتراک</Text>
           </Pressable>
 
           <Pressable
             onPress={handleDelete}
             style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}
             accessibilityRole="button"
-            accessibilityLabel="Delete selected songs"
+            accessibilityLabel="حذف آهنگ‌های انتخاب‌شده"
           >
             <View style={[styles.iconCircle, styles.deleteCircle]}>
               <Trash2 size={18} color={Colors.danger} />
@@ -224,6 +228,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 18,
     zIndex: 40,
+    direction: 'rtl',
   },
   topStrip: {
     flexDirection: 'row',
@@ -241,13 +246,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   selectAllText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
+    fontSize: 12.5,
+    lineHeight: 20,
     color: Colors.textSecondary,
   },
   countText: {
+    fontFamily: Fonts.bold,
     fontSize: 13,
-    fontWeight: '700',
+    lineHeight: 20,
     color: Colors.textPrimary,
   },
   closeBtn: {
@@ -296,8 +303,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(239, 68, 68, 0.28)',
   },
   actionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
+    fontSize: 11.5,
+    lineHeight: 18,
     color: Colors.textPrimary,
   },
   deleteLabel: {

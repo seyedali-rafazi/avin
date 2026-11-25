@@ -24,15 +24,15 @@ export function extractFolderFromUri(uri: string): string {
     const decoded = decodeURIComponent(uri);
     const cleaned = decoded.replace(/^file:\/\//i, '').replace(/\\/g, '/');
     const lastSlash = cleaned.lastIndexOf('/');
-    if (lastSlash <= 0) return 'Device Storage';
+    if (lastSlash <= 0) return 'حافظه دستگاه';
     const dir = cleaned.slice(0, lastSlash);
     const parts = dir.split('/').filter(Boolean);
-    if (parts.length === 0) return 'Device Storage';
+    if (parts.length === 0) return 'حافظه دستگاه';
     // Return up to the last two meaningful folder segments (e.g. "Music/Favorites")
     const tail = parts.slice(-2).join('/');
-    return tail || 'Device Storage';
+    return tail || 'حافظه دستگاه';
   } catch {
-    return 'Device Storage';
+    return 'حافظه دستگاه';
   }
 }
 
@@ -54,8 +54,8 @@ export function parseMetadataFromFilename(
   // Remove leading track numbers like "01 - ", "01. ", "1) "
   const withoutTrackNum = base.replace(/^\d{1,3}[\s._)\-]+/, '').trim() || base;
 
-  let parsedArtist = 'Unknown Artist';
-  let parsedTitle = withoutTrackNum || 'Untitled Track';
+  let parsedArtist = 'هنرمند ناشناس';
+  let parsedTitle = withoutTrackNum || 'آهنگ بدون عنوان';
 
   const separatorMatch = withoutTrackNum.match(/^(.+?)\s+[-–—]\s+(.+)$/);
   if (separatorMatch && separatorMatch[1] && separatorMatch[2]) {
@@ -67,17 +67,17 @@ export function parseMetadataFromFilename(
   const folderParts = folder.split('/').filter(Boolean);
   const inferredAlbum =
     folderParts.length > 0 &&
-    !['music', 'download', 'downloads', 'audio', 'device storage', 'imported'].includes(
+    !['music', 'download', 'downloads', 'audio', 'device storage', 'imported', 'حافظه دستگاه', 'واردشده'].includes(
       folderParts[folderParts.length - 1]!.toLowerCase()
     )
       ? folderParts[folderParts.length - 1]!
-      : 'Unknown Album';
+      : 'آلبوم ناشناس';
 
   return {
     title: overrides?.title?.trim() || parsedTitle,
     artist: overrides?.artist?.trim() || parsedArtist,
     album: overrides?.album?.trim() || inferredAlbum,
-    genre: overrides?.genre?.trim() || 'Unknown Genre',
+    genre: overrides?.genre?.trim() || 'سبک ناشناس',
     folder,
   };
 }

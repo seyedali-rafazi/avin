@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Colors, Spacing } from '@/theme';
+import { Colors, Fonts, Spacing } from '@/theme';
 import { formatDuration } from '@/utils/format';
 
 interface PlaybackProgressBarProps {
@@ -97,6 +97,7 @@ export function PlaybackProgressBar({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
+    direction: 'ltr',
   },
   touchArea: {
     height: 28,
@@ -132,7 +133,9 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xxs,
   },
   timeText: {
-    fontSize: 12,
+    fontFamily: Fonts.medium,
+    fontSize: 11.5,
+    lineHeight: 18,
     color: Colors.textSecondary,
     fontVariant: ['tabular-nums'],
   },

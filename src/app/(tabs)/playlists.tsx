@@ -21,7 +21,7 @@ import {
   ScreenHeader,
 } from '@/components';
 import { useLibraryStore, usePlaylistStore } from '@/stores';
-import { Colors, Layout, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import type { Playlist } from '@/types/music';
 
 export default function PlaylistsScreen() {
@@ -51,7 +51,7 @@ export default function PlaylistsScreen() {
   const handleSavePlaylist = () => {
     const trimmed = playlistName.trim();
     if (!trimmed) {
-      Alert.alert('Invalid Name', 'Please enter a playlist name.');
+      Alert.alert('نام نامعتبر', 'لطفاً یک نام برای پلی‌لیست وارد کنید.');
       return;
     }
 
@@ -67,12 +67,12 @@ export default function PlaylistsScreen() {
 
   const confirmDelete = (pl: Playlist) => {
     Alert.alert(
-      'Delete Playlist',
-      `Are you sure you want to delete "${pl.name}"? Your audio files will not be deleted.`,
+      'حذف پلی‌لیست',
+      `آیا مطمئن هستید که می‌خواهید پلی‌لیست «${pl.name}» را حذف کنید؟ فایل‌های صوتی شما از دستگاه حذف نمی‌شوند.`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'انصراف', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'حذف',
           style: 'destructive',
           onPress: () => deletePlaylist(pl.id),
         },
@@ -83,12 +83,12 @@ export default function PlaylistsScreen() {
   return (
     <ScreenContainer>
       <ScreenHeader
-        title="Playlists"
+        title="پلی‌لیست‌ها"
         rightElement={
           <IconButton
             icon={<Plus size={24} color={Colors.textPrimary} />}
             onPress={openCreateModal}
-            accessibilityLabel="Create new playlist"
+            accessibilityLabel="ساخت پلی‌لیست جدید"
           />
         }
       />
@@ -98,10 +98,10 @@ export default function PlaylistsScreen() {
         contentContainerStyle={styles.gridContainer}
       >
         <View style={styles.grid}>
-          {/* Favorites Card always first matching Reference Screen #4 */}
+          {/* Favorites Card always first */}
           <View style={styles.gridItem}>
             <PlaylistCard
-              title="Favorites"
+              title="علاقه‌مندی‌ها"
               songCount={favoriteCount}
               isFavorites
               artworkHeight={124}
@@ -128,9 +128,9 @@ export default function PlaylistsScreen() {
             </View>
           ))}
 
-          {/* Dashed Create Playlist Card matching Reference Screen #4 */}
+          {/* Dashed Create Playlist Card */}
           <View style={styles.gridItem}>
-            <CreatePlaylistCard height={180} onPress={openCreateModal} />
+            <CreatePlaylistCard height={184} onPress={openCreateModal} />
           </View>
         </View>
       </ScrollView>
@@ -138,12 +138,12 @@ export default function PlaylistsScreen() {
       <AppModal
         visible={createModalVisible}
         onClose={() => setCreateModalVisible(false)}
-        title={editingPlaylist ? 'Rename Playlist' : 'New Playlist'}
+        title={editingPlaylist ? 'تغییر نام پلی‌لیست' : 'پلی‌لیست جدید'}
       >
         <TextInput
           value={playlistName}
           onChangeText={setPlaylistName}
-          placeholder="Playlist name"
+          placeholder="نام پلی‌لیست را وارد کنید"
           placeholderTextColor={Colors.textMuted}
           style={styles.input}
           autoFocus
@@ -151,16 +151,17 @@ export default function PlaylistsScreen() {
           selectionColor={Colors.accent}
           returnKeyType="done"
           onSubmitEditing={handleSavePlaylist}
+          textAlign="right"
         />
         <View style={styles.modalActions}>
           <Pressable
             onPress={() => setCreateModalVisible(false)}
             style={styles.cancelBtn}
           >
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>انصراف</Text>
           </Pressable>
           <PrimaryButton
-            label={editingPlaylist ? 'Save' : 'Create'}
+            label={editingPlaylist ? 'ذخیره' : 'ساختن'}
             size="sm"
             onPress={handleSavePlaylist}
           />
@@ -175,12 +176,12 @@ export default function PlaylistsScreen() {
           menuPlaylist
             ? [
                 {
-                  label: 'Rename Playlist',
+                  label: 'تغییر نام پلی‌لیست',
                   icon: <Edit3 size={18} color={Colors.textPrimary} />,
                   onPress: () => openRenameModal(menuPlaylist),
                 },
                 {
-                  label: 'Delete Playlist',
+                  label: 'حذف پلی‌لیست',
                   icon: <Trash2 size={18} color={Colors.danger} />,
                   destructive: true,
                   onPress: () => confirmDelete(menuPlaylist),
@@ -212,11 +213,14 @@ const styles = StyleSheet.create({
     borderRadius: Radii.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
+    fontFamily: Fonts.regular,
     color: Colors.textPrimary,
-    fontSize: 15,
+    fontSize: 14,
     borderWidth: 1,
     borderColor: Colors.border,
     marginBottom: Spacing.lg,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   modalActions: {
     flexDirection: 'row',
@@ -229,8 +233,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   cancelText: {
+    fontFamily: Fonts.medium,
     color: Colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13.5,
   },
 });

@@ -24,7 +24,8 @@ import {
   ScreenContainer,
 } from '@/components';
 import { usePlayerStore } from '@/stores';
-import { Colors, Layout, Radii, Spacing, Typography } from '@/theme';
+import { Colors, Fonts, Layout, Radii, Spacing, Typography } from '@/theme';
+import { localizeMetadata } from '@/utils/format';
 
 export default function QueueScreen() {
   const queue = usePlayerStore((s) => s.queue);
@@ -36,36 +37,40 @@ export default function QueueScreen() {
   const clearQueue = usePlayerStore((s) => s.clearQueue);
 
   const handleClearQueue = () => {
-    Alert.alert('Clear Queue', 'Stop playback and remove all tracks from the queue?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Clear',
-        style: 'destructive',
-        onPress: () => {
-          void clearQueue();
-          router.back();
+    Alert.alert(
+      'پاک کردن صف پخش',
+      'پخش متوقف شود و همه آهنگ‌ها از صف پخش حذف شوند؟',
+      [
+        { text: 'انصراف', style: 'cancel' },
+        {
+          text: 'پاک کردن',
+          style: 'destructive',
+          onPress: () => {
+            void clearQueue();
+            router.back();
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   return (
     <ScreenContainer edges={['top', 'bottom']}>
-      {/* Header matching Reference Screen #7 */}
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={Typography.greeting}>Up Next</Text>
+        <Text style={Typography.greeting}>صف پخش</Text>
         <IconButton
           icon={<X size={22} color={Colors.textPrimary} />}
           onPress={() => router.back()}
-          accessibilityLabel="Close queue"
+          accessibilityLabel="بستن صف پخش"
         />
       </View>
 
       {queue.length === 0 ? (
         <EmptyState
           icon={<ListMusic size={30} color={Colors.accent} />}
-          title="Queue Is Empty"
-          description="Start playing any song or playlist to populate your Up Next queue."
+          title="صف پخش خالی است"
+          description="یک آهنگ یا پلی‌لیست را پخش کنید تا صف پخش شما اینجا نمایش داده شود."
         />
       ) : (
         <>
@@ -100,7 +105,7 @@ export default function QueueScreen() {
                       {item.title}
                     </Text>
                     <Text style={styles.artist} numberOfLines={1}>
-                      {item.artist}
+                      {localizeMetadata(item.artist, 'هنرمند ناشناس')}
                     </Text>
                   </View>
 
@@ -115,7 +120,7 @@ export default function QueueScreen() {
                           onPress={() => reorderQueue(index, index - 1)}
                           hitSlop={8}
                           style={styles.reorderBtn}
-                          accessibilityLabel={`Move ${item.title} up`}
+                          accessibilityLabel={`انتقال ${item.title} به بالا`}
                         >
                           <ChevronUp size={16} color={Colors.textSecondary} />
                         </Pressable>
@@ -125,7 +130,7 @@ export default function QueueScreen() {
                           onPress={() => reorderQueue(index, index + 1)}
                           hitSlop={8}
                           style={styles.reorderBtn}
-                          accessibilityLabel={`Move ${item.title} down`}
+                          accessibilityLabel={`انتقال ${item.title} به پایین`}
                         >
                           <ChevronDown size={16} color={Colors.textSecondary} />
                         </Pressable>
@@ -134,7 +139,7 @@ export default function QueueScreen() {
                         onPress={() => removeFromQueue(index)}
                         hitSlop={8}
                         style={styles.reorderBtn}
-                        accessibilityLabel={`Remove ${item.title} from queue`}
+                        accessibilityLabel={`حذف ${item.title} از صف پخش`}
                       >
                         <X size={15} color={Colors.textMuted} />
                       </Pressable>
@@ -145,14 +150,14 @@ export default function QueueScreen() {
             }}
           />
 
-          {/* Bottom Shuffle & Clear Queue Buttons matching Reference Screen #7 */}
+          {/* Bottom Shuffle & Clear Queue Buttons */}
           <View style={styles.footer}>
             <Pressable
               onPress={shuffleCurrentQueue}
               style={({ pressed }) => [styles.footerBtn, pressed && styles.pressed]}
             >
               <Shuffle size={17} color={Colors.accentSecondary} />
-              <Text style={styles.footerBtnText}>Shuffle</Text>
+              <Text style={styles.footerBtnText}>پخش تصادفی</Text>
             </Pressable>
 
             <Pressable
@@ -160,7 +165,7 @@ export default function QueueScreen() {
               style={({ pressed }) => [styles.footerBtn, pressed && styles.pressed]}
             >
               <Trash2 size={17} color={Colors.textSecondary} />
-              <Text style={styles.footerBtnText}>Clear Queue</Text>
+              <Text style={styles.footerBtnText}>پاک کردن صف</Text>
             </Pressable>
           </View>
         </>
@@ -198,7 +203,7 @@ const styles = StyleSheet.create({
   },
   activeAccentBar: {
     position: 'absolute',
-    left: 0,
+    right: 0,
     top: 8,
     bottom: 8,
     width: 3,
@@ -210,23 +215,31 @@ const styles = StyleSheet.create({
   },
   info: {
     flex: 1,
+    alignItems: 'flex-start',
   },
   title: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontFamily: Fonts.medium,
+    fontSize: 14,
+    lineHeight: 22,
     color: Colors.textPrimary,
     marginBottom: 2,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   currentTitle: {
-    color: Colors.textPrimary,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
+    color: Colors.accentSecondary,
   },
   artist: {
-    fontSize: 12,
+    fontFamily: Fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 18,
     color: Colors.textSecondary,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   equalizerWrap: {
-    paddingRight: 4,
+    paddingLeft: 4,
   },
   rowActions: {
     flexDirection: 'row',
@@ -254,14 +267,17 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: Radii.lg,
     backgroundColor: Colors.surfaceElevated,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.sm,
   },
   footerBtnText: {
+    fontFamily: Fonts.semiBold,
     color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13.5,
+    lineHeight: 20,
   },
 });

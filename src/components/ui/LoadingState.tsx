@@ -6,7 +6,7 @@ interface LoadingStateProps {
   message?: string;
 }
 
-export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
+export function LoadingState({ message = 'در حال بارگذاری...' }: LoadingStateProps) {
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color={Colors.accent} />
@@ -25,5 +25,6 @@ const styles = StyleSheet.create({
   },
   message: {
     ...Typography.subtitle,
+    textAlign: 'center',
   },
 });

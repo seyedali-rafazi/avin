@@ -65,7 +65,7 @@ class AudioEngine {
       this.isModeConfigured = true;
     } catch (err) {
       this.callbacks?.onError(
-        err instanceof Error ? err.message : 'Failed to configure background audio session.'
+        err instanceof Error ? err.message : 'تنظیم پخش پس‌زمینه با خطا مواجه شد.'
       );
     }
   }
@@ -143,8 +143,8 @@ class AudioEngine {
     } catch (err) {
       this.callbacks?.onError(
         err instanceof Error
-          ? `Unable to play "${song.title}": ${err.message}`
-          : `Unable to play "${song.title}". The audio file may be unavailable.`
+          ? `خطا در پخش «${song.title}»: ${err.message}`
+          : `امکان پخش «${song.title}» وجود ندارد. ممکن است فایل صوتی در دسترس نباشد.`
       );
     }
   }
@@ -154,7 +154,7 @@ class AudioEngine {
       this.player?.play();
     } catch (err) {
       this.callbacks?.onError(
-        err instanceof Error ? err.message : 'Unable to resume playback.'
+        err instanceof Error ? err.message : 'امکان ادامه پخش وجود ندارد.'
       );
     }
   }
@@ -184,7 +184,7 @@ class AudioEngine {
     try {
       await this.player.seekTo(clamped);
     } catch (err) {
-      this.callbacks?.onError(err instanceof Error ? err.message : 'Unable to seek audio.');
+      this.callbacks?.onError(err instanceof Error ? err.message : 'امکان جابه‌جایی زمان پخش وجود ندارد.');
     }
   }
 

@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Radii, Spacing, Typography } from '@/theme';
+import { Colors, Fonts, Radii, Spacing, Typography } from '@/theme';
 
 export interface SheetOption {
   label: string;
@@ -133,12 +133,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.overlay,
     justifyContent: 'flex-end',
+    direction: 'rtl',
   },
   sheet: {
     backgroundColor: Colors.surface,
     borderTopLeftRadius: Radii.xxl,
     borderTopRightRadius: Radii.xxl,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     maxHeight: '80%',
+    direction: 'rtl',
   },
   handle: {
     width: 38,
@@ -154,6 +158,7 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.divider,
+    alignItems: 'flex-start',
   },
   subtitle: {
     ...Typography.subtitle,
@@ -188,35 +193,44 @@ const styles = StyleSheet.create({
   },
   optionTextWrap: {
     flex: 1,
+    alignItems: 'flex-start',
   },
   optionLabel: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontFamily: Fonts.medium,
+    fontSize: 14,
+    lineHeight: 22,
     color: Colors.textPrimary,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   optionSubtitle: {
-    fontSize: 12,
+    fontFamily: Fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 18,
     color: Colors.textSecondary,
     marginTop: 2,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   destructiveLabel: {
     color: Colors.danger,
   },
   selectedLabel: {
+    fontFamily: Fonts.semiBold,
     color: Colors.accentSecondary,
-    fontWeight: '600',
   },
   accentLabel: {
+    fontFamily: Fonts.semiBold,
     color: Colors.accentSecondary,
-    fontWeight: '600',
   },
   rightText: {
+    fontFamily: Fonts.medium,
     fontSize: 12,
-    fontWeight: '500',
+    lineHeight: 18,
     color: Colors.textMuted,
   },
   selectedRightText: {
+    fontFamily: Fonts.semiBold,
     color: Colors.accentSecondary,
-    fontWeight: '600',
   },
 });

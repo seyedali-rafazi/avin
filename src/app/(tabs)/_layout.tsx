@@ -9,14 +9,14 @@ export default function TabsLayout() {
       tabBar={(props) => <BottomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        sceneStyle: { backgroundColor: Colors.background },
+        sceneStyle: { backgroundColor: Colors.background, direction: 'rtl' },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="library" options={{ title: 'Library' }} />
-      <Tabs.Screen name="playlists" options={{ title: 'Playlists' }} />
-      <Tabs.Screen name="favorites" options={{ title: 'Favorites' }} />
-      <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
+      <Tabs.Screen name="index" options={{ title: 'خانه' }} />
+      <Tabs.Screen name="library" options={{ title: 'کتابخانه' }} />
+      <Tabs.Screen name="playlists" options={{ title: 'پلی‌لیست‌ها' }} />
+      <Tabs.Screen name="favorites" options={{ title: 'علاقه‌مندی‌ها' }} />
+      <Tabs.Screen name="settings" options={{ title: 'تنظیمات' }} />
     </Tabs>
   );
 }

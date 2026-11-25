@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
-  ChevronRight,
+  ChevronLeft,
   Clock,
   Disc,
   Folder,
@@ -29,17 +29,17 @@ import {
 } from '@/components';
 import { useSongSelection } from '@/hooks/useSongSelection';
 import { useLibraryStore, usePlayerStore } from '@/stores';
-import { Colors, Layout, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import type { LibraryCategory, Song, SortField, SortOrder } from '@/types/music';
-import { formatSongCount } from '@/utils/format';
+import { formatSongCount, localizeMetadata } from '@/utils/format';
 
 const TITLES: Record<LibraryCategory, string> = {
-  'all-songs': 'All Songs',
-  albums: 'Albums',
-  artists: 'Artists',
-  genres: 'Genres',
-  folders: 'Folders',
-  'recently-added': 'Recently Added',
+  'all-songs': 'همه آهنگ‌ها',
+  albums: 'آلبوم‌ها',
+  artists: 'هنرمندان',
+  genres: 'سبک‌ها',
+  folders: 'پوشه‌ها',
+  'recently-added': 'تازه اضافه‌شده',
 };
 
 export default function LibraryCategoryScreen() {
@@ -102,8 +102,8 @@ export default function LibraryCategoryScreen() {
               <Music size={28} color={Colors.accent} />
             )
           }
-          title="No Songs Found"
-          description="Scan your device or import audio files to populate your music library."
+          title="آهنگی پیدا نشد"
+          description="حافظه دستگاه را اسکن کنید یا فایل‌های صوتی را اضافه کنید تا در کتابخانه نمایش داده شوند."
         />
       );
     }
@@ -115,7 +115,7 @@ export default function LibraryCategoryScreen() {
         ListHeaderComponent={
           <View style={styles.actionsRow}>
             <PrimaryButton
-              label="Play All"
+              label="پخش همه"
               icon={<Play size={15} color={Colors.textPrimary} fill={Colors.textPrimary} />}
               onPress={() => void playQueue(list, 0, false)}
               style={styles.flexBtn}
@@ -125,7 +125,7 @@ export default function LibraryCategoryScreen() {
               style={({ pressed }) => [styles.shuffleBtn, pressed && styles.pressed]}
             >
               <Shuffle size={16} color={Colors.accentSecondary} />
-              <Text style={styles.shuffleText}>Shuffle</Text>
+              <Text style={styles.shuffleText}>پخش تصادفی</Text>
             </Pressable>
           </View>
         }
@@ -182,8 +182,8 @@ export default function LibraryCategoryScreen() {
           (albums.length === 0 ? (
             <EmptyState
               icon={<Disc size={28} color={Colors.accent} />}
-              title="No Albums Found"
-              description="Albums will appear here once your local music library is scanned."
+              title="آلبومی پیدا نشد"
+              description="پس از اسکن کتابخانه موسیقی، آلبوم‌ها اینجا نمایش داده می‌شوند."
             />
           ) : (
             <FlatList
@@ -197,17 +197,22 @@ export default function LibraryCategoryScreen() {
                   onPress={() =>
                     router.push({
                       pathname: '/library/detail',
-                      params: { type: 'album', value: item.title, title: item.title },
+                      params: {
+                        type: 'album',
+                        value: item.title,
+                        title: localizeMetadata(item.title, 'آلبوم ناشناس'),
+                      },
                     })
                   }
                   style={({ pressed }) => [styles.albumCard, pressed && styles.pressed]}
                 >
                   <AlbumArtwork uri={item.artworkUri} size={156} borderRadius={Radii.md} />
                   <Text style={styles.albumTitle} numberOfLines={1}>
-                    {item.title}
+                    {localizeMetadata(item.title, 'آلبوم ناشناس')}
                   </Text>
                   <Text style={styles.albumSub} numberOfLines={1}>
-                    {item.artist} • {formatSongCount(item.songCount ?? 0)}
+                    {localizeMetadata(item.artist, 'هنرمند ناشناس')} •{' '}
+                    {formatSongCount(item.songCount ?? 0)}
                   </Text>
                 </Pressable>
               )}
@@ -218,8 +223,8 @@ export default function LibraryCategoryScreen() {
           (artists.length === 0 ? (
             <EmptyState
               icon={<Users size={28} color={Colors.accent} />}
-              title="No Artists Found"
-              description="Artists will appear here once your music files are scanned."
+              title="هنرمندی پیدا نشد"
+              description="پس از اسکن فایل‌های موسیقی، هنرمندان اینجا نمایش داده می‌شوند."
             />
           ) : (
             <FlatList
@@ -231,7 +236,11 @@ export default function LibraryCategoryScreen() {
                   onPress={() =>
                     router.push({
                       pathname: '/library/detail',
-                      params: { type: 'artist', value: item.name, title: item.name },
+                      params: {
+                        type: 'artist',
+                        value: item.name,
+                        title: localizeMetadata(item.name, 'هنرمند ناشناس'),
+                      },
                     })
                   }
                 />
@@ -243,8 +252,8 @@ export default function LibraryCategoryScreen() {
           (genres.length === 0 ? (
             <EmptyState
               icon={<Tag size={28} color={Colors.accent} />}
-              title="No Genres Found"
-              description="Genres will appear here once your local audio files are scanned."
+              title="سبکی پیدا نشد"
+              description="پس از اسکن فایل‌های صوتی، سبک‌ها اینجا نمایش داده می‌شوند."
             />
           ) : (
             <FlatList
@@ -256,7 +265,11 @@ export default function LibraryCategoryScreen() {
                   onPress={() =>
                     router.push({
                       pathname: '/library/detail',
-                      params: { type: 'genre', value: item.name, title: item.name },
+                      params: {
+                        type: 'genre',
+                        value: item.name,
+                        title: localizeMetadata(item.name, 'سبک ناشناس'),
+                      },
                     })
                   }
                   style={({ pressed }) => [styles.badgeCard, pressed && styles.cardPressed]}
@@ -265,10 +278,12 @@ export default function LibraryCategoryScreen() {
                     <Tag size={19} color={Colors.accentSecondary} />
                   </View>
                   <View style={styles.badgeMeta}>
-                    <Text style={styles.badgeTitle}>{item.name}</Text>
+                    <Text style={styles.badgeTitle}>
+                      {localizeMetadata(item.name, 'سبک ناشناس')}
+                    </Text>
                     <Text style={styles.badgeSub}>{formatSongCount(item.songCount)}</Text>
                   </View>
-                  <ChevronRight size={18} color={Colors.textMuted} />
+                  <ChevronLeft size={18} color={Colors.textMuted} />
                 </Pressable>
               )}
             />
@@ -278,8 +293,8 @@ export default function LibraryCategoryScreen() {
           (folders.length === 0 ? (
             <EmptyState
               icon={<Folder size={28} color={Colors.accent} />}
-              title="No Folders Found"
-              description="Audio folders discovered on your device will appear here."
+              title="پوشه‌ای پیدا نشد"
+              description="پوشه‌های حاوی موسیقی روی دستگاه شما اینجا نمایش داده می‌شوند."
             />
           ) : (
             <FlatList
@@ -291,7 +306,11 @@ export default function LibraryCategoryScreen() {
                   onPress={() =>
                     router.push({
                       pathname: '/library/detail',
-                      params: { type: 'folder', value: item.path, title: item.name },
+                      params: {
+                        type: 'folder',
+                        value: item.path,
+                        title: localizeMetadata(item.name, 'پوشه'),
+                      },
                     })
                   }
                   style={({ pressed }) => [styles.badgeCard, pressed && styles.cardPressed]}
@@ -301,13 +320,14 @@ export default function LibraryCategoryScreen() {
                   </View>
                   <View style={styles.badgeMeta}>
                     <Text style={styles.badgeTitle} numberOfLines={1}>
-                      {item.name}
+                      {localizeMetadata(item.name, 'پوشه')}
                     </Text>
                     <Text style={styles.badgeSub} numberOfLines={1}>
-                      {item.path} • {formatSongCount(item.songCount)}
+                      {localizeMetadata(item.path, 'حافظه دستگاه')} •{' '}
+                      {formatSongCount(item.songCount)}
                     </Text>
                   </View>
-                  <ChevronRight size={18} color={Colors.textMuted} />
+                  <ChevronLeft size={18} color={Colors.textMuted} />
                 </Pressable>
               )}
             />
@@ -367,9 +387,10 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   shuffleText: {
+    fontFamily: Fonts.semiBold,
     color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13.5,
+    lineHeight: 22,
   },
   pressed: {
     opacity: 0.78,
@@ -393,15 +414,24 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   albumTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
+    fontSize: 13.5,
+    lineHeight: 22,
     color: Colors.textPrimary,
     marginTop: 8,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    width: '100%',
   },
   albumSub: {
-    fontSize: 12,
+    fontFamily: Fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 18,
     color: Colors.textSecondary,
     marginTop: 2,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    width: '100%',
   },
   simpleList: {
     paddingHorizontal: Layout.screenPadding,
@@ -413,6 +443,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.surface,
     borderRadius: Radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     padding: Spacing.md,
     gap: Spacing.md,
   },
@@ -429,15 +461,23 @@ const styles = StyleSheet.create({
   },
   badgeMeta: {
     flex: 1,
+    alignItems: 'flex-start',
   },
   badgeTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
+    fontSize: 14,
+    lineHeight: 22,
     color: Colors.textPrimary,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   badgeSub: {
-    fontSize: 12,
+    fontFamily: Fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 18,
     color: Colors.textSecondary,
     marginTop: 2,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
 });

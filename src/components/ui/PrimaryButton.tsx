@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, type ViewStyle } from 'react-native';
-import { Colors, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Radii, Spacing } from '@/theme';
 
 interface PrimaryButtonProps {
   label: string;
@@ -77,11 +77,11 @@ const styles = StyleSheet.create({
   },
   md: {
     paddingHorizontal: Spacing.xl,
-    paddingVertical: 12,
+    paddingVertical: 11,
   },
   lg: {
     paddingHorizontal: Spacing.xxl,
-    paddingVertical: 14,
+    paddingVertical: 13,
   },
   pressed: {
     opacity: 0.85,
@@ -91,12 +91,14 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   label: {
+    fontFamily: Fonts.semiBold,
     color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13.5,
+    lineHeight: 22,
   },
   labelSm: {
-    fontSize: 13,
+    fontSize: 12.5,
+    lineHeight: 20,
   },
   dangerLabel: {
     color: Colors.danger,

@@ -4,7 +4,8 @@ import { router } from 'expo-router';
 import { ListMusic, Pause, Play } from 'lucide-react-native';
 import { AlbumArtwork } from '@/components/music/AlbumArtwork';
 import { usePlayerStore } from '@/stores';
-import { Colors, Layout, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
+import { localizeMetadata } from '@/utils/format';
 
 export function MiniPlayer() {
   const currentSong = usePlayerStore((s) => s.currentSong);
@@ -19,6 +20,7 @@ export function MiniPlayer() {
 
   const progress =
     duration > 0 ? Math.min(1, Math.max(0, position / duration)) : 0;
+  const artistName = localizeMetadata(currentSong.artist, 'هنرمند ناشناس');
 
   return (
     <View style={styles.wrapper}>
@@ -26,7 +28,7 @@ export function MiniPlayer() {
         onPress={() => router.push('/player')}
         style={({ pressed }) => [styles.container, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={`Now playing: ${currentSong.title} by ${currentSong.artist}. Open player.`}
+        accessibilityLabel={`در حال پخش: ${currentSong.title} از ${artistName}. باز کردن پخش‌کننده.`}
       >
         <View style={styles.contentRow}>
           <AlbumArtwork
@@ -40,7 +42,7 @@ export function MiniPlayer() {
               {currentSong.title}
             </Text>
             <Text style={styles.artist} numberOfLines={1}>
-              {currentSong.artist}
+              {artistName}
             </Text>
           </View>
 
@@ -53,7 +55,7 @@ export function MiniPlayer() {
               hitSlop={10}
               style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}
               accessibilityRole="button"
-              accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
+              accessibilityLabel={isPlaying ? 'توقف' : 'پخش'}
             >
               {isPlaying ? (
                 <Pause size={21} color={Colors.textPrimary} fill={Colors.textPrimary} />
@@ -70,7 +72,7 @@ export function MiniPlayer() {
               hitSlop={10}
               style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}
               accessibilityRole="button"
-              accessibilityLabel="Open Up Next queue"
+              accessibilityLabel="باز کردن صف پخش"
             >
               <ListMusic size={21} color={Colors.textPrimary} />
             </Pressable>
@@ -91,6 +93,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
     paddingBottom: 4,
     paddingTop: 4,
+    direction: 'rtl',
   },
   container: {
     backgroundColor: Colors.surfaceElevated,
@@ -112,16 +115,24 @@ const styles = StyleSheet.create({
   meta: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   title: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
+    fontSize: 13.5,
+    lineHeight: 21,
     color: Colors.textPrimary,
     marginBottom: 1,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   artist: {
-    fontSize: 12,
+    fontFamily: Fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 17,
     color: Colors.textSecondary,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   actions: {
     flexDirection: 'row',
@@ -142,6 +153,7 @@ const styles = StyleSheet.create({
     height: 2.5,
     backgroundColor: Colors.trackBackground,
     width: '100%',
+    direction: 'ltr',
   },
   progressFill: {
     height: '100%',

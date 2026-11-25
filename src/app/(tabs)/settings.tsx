@@ -25,12 +25,17 @@ import { cacheService } from '@/services/storage/cacheService';
 import { useLibraryStore, usePlayerStore, useSettingsStore } from '@/stores';
 import { Colors, Spacing } from '@/theme';
 import type { RepeatMode } from '@/types/music';
-import { formatFileSize, formatSpeedLabel } from '@/utils/format';
+import {
+  formatFileSize,
+  formatNumber,
+  formatSpeedLabel,
+  toPersianDigits,
+} from '@/utils/format';
 
 const REPEAT_LABELS: Record<RepeatMode, string> = {
-  off: 'Off',
-  all: 'Repeat All',
-  one: 'Repeat One',
+  off: 'خاموش',
+  all: 'تکرار همه',
+  one: 'تکرار یک آهنگ',
 };
 
 export default function SettingsScreen() {
@@ -60,19 +65,19 @@ export default function SettingsScreen() {
     const res = await scanDevice();
     if (res.requiresDevBuild) {
       Alert.alert(
-        'Development Build Required',
-        res.error ?? 'Use Import Audio Files to load local music in Expo Go.',
+        'نیازمند نسخه نصبی',
+        res.error ?? 'برای وارد کردن فایل‌های صوتی از گزینه افزودن فایل استفاده کنید.',
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Import Files', onPress: () => void handleImport() },
+          { text: 'انصراف', style: 'cancel' },
+          { text: 'افزودن فایل', onPress: () => void handleImport() },
         ]
       );
     } else if (res.error) {
-      Alert.alert('Rescan Library', res.error);
+      Alert.alert('اسکن مجدد کتابخانه', res.error);
     } else {
       Alert.alert(
-        'Library Rescanned',
-        `Discovered ${res.scanned} audio files (${res.added} added, ${res.updated} updated, ${res.removed} removed).`
+        'اسکن کتابخانه انجام شد',
+        `${formatNumber(res.scanned)} فایل صوتی پیدا شد (${formatNumber(res.added)} مورد جدید، ${formatNumber(res.updated)} به‌روزرسانی، ${formatNumber(res.removed)} حذف‌شده).`
       );
     }
   };
@@ -80,20 +85,23 @@ export default function SettingsScreen() {
   const handleImport = async () => {
     const res = await importFiles();
     if (res.error) {
-      Alert.alert('Import Error', res.error);
+      Alert.alert('خطا در افزودن فایل', res.error);
     } else if (res.added > 0) {
-      Alert.alert('Import Complete', `Added ${res.added} audio files to your library.`);
+      Alert.alert(
+        'افزودن انجام شد',
+        `${formatNumber(res.added)} فایل صوتی به کتابخانه شما اضافه شد.`
+      );
     }
   };
 
   const handleClearHistory = () => {
     Alert.alert(
-      'Clear Playback History',
-      'This removes your Recently Played history and resets play counts. Your songs and playlists will stay intact.',
+      'پاک کردن تاریخچه پخش',
+      'لیست اخیراً پخش‌شده و تعداد دفعات پخش پاک می‌شود. آهنگ‌ها و پلی‌لیست‌های شما دست‌نخورده باقی می‌مانند.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'انصراف', style: 'cancel' },
         {
-          text: 'Clear',
+          text: 'پاک کردن',
           style: 'destructive',
           onPress: () => clearPlaybackHistory(),
         },
@@ -105,7 +113,7 @@ export default function SettingsScreen() {
     await cacheService.clearCache();
     const updated = await cacheService.getCacheSizeBytes();
     setCacheBytes(updated);
-    Alert.alert('Cache Cleared', 'Cached artwork and temporary files have been cleared.');
+    Alert.alert('حافظه پنهان پاک شد', 'تصاویر کاور و فایل‌های موقت با موفقیت پاک شدند.');
   };
 
   return (
@@ -114,23 +122,23 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <ScreenHeader title="Settings" />
+        <ScreenHeader title="تنظیمات" />
 
         {/* Playback Section */}
-        <SettingsSection title="Playback">
+        <SettingsSection title="پخش موسیقی">
           <SettingsRow
-            title="Default Repeat Mode"
+            title="حالت تکرار پیش‌فرض"
             valueText={REPEAT_LABELS[settings.defaultRepeatMode]}
             showChevron
             onPress={() => setRepeatSheetVisible(true)}
           />
           <SettingsRow
-            title="Shuffle by Default"
+            title="پخش تصادفی پیش‌فرض"
             switchValue={settings.shuffleByDefault}
             onSwitchChange={setShuffleByDefault}
           />
           <SettingsRow
-            title="Playback Speed"
+            title="سرعت پخش"
             valueText={formatSpeedLabel(settings.defaultPlaybackSpeed)}
             showChevron
             onPress={() => setSpeedSheetVisible(true)}
@@ -138,14 +146,14 @@ export default function SettingsScreen() {
           />
         </SettingsSection>
 
-        {/* Library Section matching Reference Screen #6 */}
-        <SettingsSection title="Library">
+        {/* Library Section */}
+        <SettingsSection title="کتابخانه">
           <SettingsRow
-            title="Rescan Library"
+            title="اسکن مجدد کتابخانه"
             subtitle={
               isScanning && scanProgress
-                ? `Scanning ${scanProgress.scanned} files...`
-                : 'Scan device storage for local audio files'
+                ? `در حال اسکن ${formatNumber(scanProgress.scanned)} فایل...`
+                : 'جستجوی فایل‌های صوتی در حافظه دستگاه'
             }
             rightElement={
               isScanning ? (
@@ -157,19 +165,19 @@ export default function SettingsScreen() {
             onPress={() => void handleRescan()}
           />
           <SettingsRow
-            title="Import Audio Files"
-            subtitle="Add local tracks from device folders"
+            title="افزودن فایل‌های صوتی"
+            subtitle="انتخاب دستی آهنگ‌ها از پوشه‌های دستگاه"
             rightElement={<FolderPlus size={18} color={Colors.textSecondary} />}
             onPress={() => void handleImport()}
           />
           <SettingsRow
-            title="Clear Playback History"
+            title="پاک کردن تاریخچه پخش"
             rightElement={<Trash2 size={18} color={Colors.textSecondary} />}
             onPress={handleClearHistory}
           />
           <SettingsRow
-            title="Manage Cache"
-            subtitle={`Current cache: ${formatFileSize(cacheBytes)}`}
+            title="مدیریت حافظه پنهان"
+            subtitle={`حجم فعلی: ${formatFileSize(cacheBytes)}`}
             rightElement={<HardDrive size={18} color={Colors.textSecondary} />}
             onPress={() => void handleClearCache()}
             isLast
@@ -177,11 +185,11 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         {/* About Section */}
-        <SettingsSection title="About">
+        <SettingsSection title="درباره برنامه">
           <SettingsRow
-            title="App Information"
+            title="اطلاعات برنامه"
             icon={<Info size={19} color={Colors.textSecondary} />}
-            valueText={`v${APP_INFO.version}`}
+            valueText={`نسخه ${toPersianDigits(APP_INFO.version)}`}
             showChevron
             onPress={() => router.push('/settings/about')}
             isLast
@@ -192,7 +200,7 @@ export default function SettingsScreen() {
       <BottomSheet
         visible={repeatSheetVisible}
         onClose={() => setRepeatSheetVisible(false)}
-        title="Default Repeat Mode"
+        title="حالت تکرار پیش‌فرض"
         options={(['off', 'all', 'one'] as RepeatMode[]).map((mode) => ({
           label: REPEAT_LABELS[mode],
           selected: settings.defaultRepeatMode === mode,
@@ -206,9 +214,9 @@ export default function SettingsScreen() {
       <BottomSheet
         visible={speedSheetVisible}
         onClose={() => setSpeedSheetVisible(false)}
-        title="Default Playback Speed"
+        title="سرعت پخش پیش‌فرض"
         options={PLAYBACK_SPEEDS.map((speed) => ({
-          label: formatSpeedLabel(speed),
+          label: `${formatSpeedLabel(speed)}${speed === 1.0 ? ' (عادی)' : ''}`,
           selected: settings.defaultPlaybackSpeed === speed,
           onPress: () => {
             setDefaultPlaybackSpeed(speed);

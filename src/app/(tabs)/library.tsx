@@ -10,7 +10,7 @@ import {
 import { router } from 'expo-router';
 import {
   Calendar,
-  ChevronRight,
+  ChevronLeft,
   Clock,
   Disc,
   Folder,
@@ -34,9 +34,9 @@ import {
 } from '@/components';
 import { useSongSelection } from '@/hooks/useSongSelection';
 import { useLibraryStore, usePlayerStore } from '@/stores';
-import { Colors, Layout, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import type { LibraryCategory, Song, SortField } from '@/types/music';
-import { formatCount, formatSongCount } from '@/utils/format';
+import { formatCount, formatNumber, formatSongCount } from '@/utils/format';
 
 export default function LibraryScreen() {
   const songs = useLibraryStore((s) => s.songs);
@@ -66,37 +66,37 @@ export default function LibraryScreen() {
   }[] = [
     {
       key: 'all-songs',
-      title: 'All Songs',
+      title: 'همه آهنگ‌ها',
       subtitle: formatSongCount(songs.length),
       Icon: Music,
     },
     {
       key: 'albums',
-      title: 'Albums',
-      subtitle: formatCount(albums.length, 'album', 'albums'),
+      title: 'آلبوم‌ها',
+      subtitle: formatCount(albums.length, 'آلبوم'),
       Icon: Disc,
     },
     {
       key: 'artists',
-      title: 'Artists',
-      subtitle: formatCount(artists.length, 'artist', 'artists'),
+      title: 'هنرمندان',
+      subtitle: formatCount(artists.length, 'هنرمند'),
       Icon: Users,
     },
     {
       key: 'genres',
-      title: 'Genres',
-      subtitle: formatCount(genres.length, 'genre', 'genres'),
+      title: 'سبک‌ها',
+      subtitle: formatCount(genres.length, 'سبک'),
       Icon: Tag,
     },
     {
       key: 'folders',
-      title: 'Folders',
-      subtitle: formatCount(folders.length, 'folder', 'folders'),
+      title: 'پوشه‌ها',
+      subtitle: formatCount(folders.length, 'پوشه'),
       Icon: Folder,
     },
     {
       key: 'recently-added',
-      title: 'Recently Added',
+      title: 'تازه اضافه‌شده',
       subtitle: formatSongCount(recentlyAdded.length),
       Icon: Clock,
     },
@@ -111,19 +111,19 @@ export default function LibraryScreen() {
     const res = await scanDevice();
     if (res.requiresDevBuild) {
       Alert.alert(
-        'Development Build Required',
-        res.error ?? 'Use Import Files to load local audio in Expo Go.',
+        'نیازمند نسخه نصبی',
+        res.error ?? 'برای وارد کردن فایل‌های صوتی از گزینه افزودن فایل استفاده کنید.',
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Import Files', onPress: () => void importFiles() },
+          { text: 'انصراف', style: 'cancel' },
+          { text: 'افزودن فایل', onPress: () => void importFiles() },
         ]
       );
     } else if (res.error) {
-      Alert.alert('Library Scan', res.error);
+      Alert.alert('اسکن کتابخانه', res.error);
     } else {
       Alert.alert(
-        'Library Updated',
-        `Scanned ${res.scanned} audio files (${res.added} added, ${res.removed} removed).`
+        'کتابخانه به‌روزرسانی شد',
+        `${formatNumber(res.scanned)} فایل صوتی بررسی شد (${formatNumber(res.added)} مورد جدید، ${formatNumber(res.removed)} مورد حذف‌شده).`
       );
     }
   };
@@ -140,14 +140,14 @@ export default function LibraryScreen() {
           selection.isSelectionMode && styles.scrollWithSelectionBar,
         ]}
       >
-        <ScreenHeader title="Library" />
+        <ScreenHeader title="کتابخانه" />
 
-        {/* Search + Filter Row matching Reference Screen #2 */}
+        {/* Search + Filter Row */}
         <View style={styles.searchRow}>
           <SearchBar
             value=""
             onChangeText={() => {}}
-            placeholder="Search in library..."
+            placeholder="جستجو در کتابخانه..."
             editable={false}
             onPressInput={() => router.push('/search')}
             style={styles.searchFlex}
@@ -157,13 +157,13 @@ export default function LibraryScreen() {
             hitSlop={8}
             style={({ pressed }) => [styles.filterBtn, pressed && styles.pressed]}
             accessibilityRole="button"
-            accessibilityLabel="Library options and sorting"
+            accessibilityLabel="گزینه‌های کتابخانه و مرتب‌سازی"
           >
-            <SlidersHorizontal size={20} color={Colors.textPrimary} />
+            <SlidersHorizontal size={19} color={Colors.textPrimary} />
           </Pressable>
         </View>
 
-        {/* 6 Category Rows matching Reference Screen #2 */}
+        {/* 6 Category Rows */}
         <View style={styles.categoryList}>
           {categories.map(({ key, title, subtitle, Icon }) => (
             <Pressable
@@ -183,7 +183,7 @@ export default function LibraryScreen() {
                 <Text style={styles.categoryTitle}>{title}</Text>
                 <Text style={styles.categorySubtitle}>{subtitle}</Text>
               </View>
-              <ChevronRight size={18} color={Colors.textMuted} />
+              <ChevronLeft size={18} color={Colors.textMuted} />
             </Pressable>
           ))}
         </View>
@@ -192,7 +192,7 @@ export default function LibraryScreen() {
         {recentPreview.length > 0 ? (
           <View style={styles.recentSection}>
             <SectionHeader
-              title="Recently Added"
+              title="تازه اضافه‌شده"
               onActionPress={() =>
                 router.push({
                   pathname: '/library/[category]',
@@ -236,62 +236,62 @@ export default function LibraryScreen() {
       <BottomSheet
         visible={filterVisible}
         onClose={() => setFilterVisible(false)}
-        title="Library Options"
+        title="گزینه‌های کتابخانه"
         options={[
           {
-            label: isScanning ? 'Scanning Device...' : 'Rescan Device Library',
+            label: isScanning ? 'در حال اسکن دستگاه...' : 'اسکن مجدد کتابخانه',
             icon: <RefreshCw size={18} color={Colors.accentSecondary} />,
             onPress: () => void handleRescan(),
           },
           {
-            label: 'Import Audio Files',
+            label: 'افزودن فایل‌های صوتی',
             icon: <FolderPlus size={18} color={Colors.accentSecondary} />,
             onPress: () => void importFiles(),
           },
           {
-            label: 'Sort by Time Added',
+            label: 'مرتب‌سازی بر اساس زمان افزودن',
             rightText:
               sortBy === 'dateAdded'
                 ? sortOrder === 'desc'
-                  ? 'Newest'
-                  : 'Oldest'
-                : 'Newest',
+                  ? 'جدیدترین'
+                  : 'قدیمی‌ترین'
+                : 'جدیدترین',
             icon: <Calendar size={18} color={sortBy === 'dateAdded' ? Colors.accentSecondary : Colors.textSecondary} />,
             selected: sortBy === 'dateAdded',
             onPress: () => handleSort('dateAdded'),
           },
           {
-            label: 'Sort by Song Name',
+            label: 'مرتب‌سازی بر اساس نام آهنگ',
             rightText:
               sortBy === 'title'
                 ? sortOrder === 'asc'
-                  ? 'A → Z'
-                  : 'Z → A'
-                : 'A → Z',
+                  ? 'الف تا ی'
+                  : 'ی تا الف'
+                : 'الف تا ی',
             icon: <Music size={18} color={sortBy === 'title' ? Colors.accentSecondary : Colors.textSecondary} />,
             selected: sortBy === 'title',
             onPress: () => handleSort('title'),
           },
           {
-            label: 'Sort by Artist Name',
+            label: 'مرتب‌سازی بر اساس نام هنرمند',
             rightText:
               sortBy === 'artist'
                 ? sortOrder === 'asc'
-                  ? 'A → Z'
-                  : 'Z → A'
-                : 'A → Z',
+                  ? 'الف تا ی'
+                  : 'ی تا الف'
+                : 'الف تا ی',
             icon: <User size={18} color={sortBy === 'artist' ? Colors.accentSecondary : Colors.textSecondary} />,
             selected: sortBy === 'artist',
             onPress: () => handleSort('artist'),
           },
           {
-            label: 'Sort by Duration',
+            label: 'مرتب‌سازی بر اساس مدت زمان',
             rightText:
               sortBy === 'duration'
                 ? sortOrder === 'desc'
-                  ? 'Longest'
-                  : 'Shortest'
-                : 'Longest',
+                  ? 'بلندترین'
+                  : 'کوتاه‌ترین'
+                : 'بلندترین',
             icon: <Clock size={18} color={sortBy === 'duration' ? Colors.accentSecondary : Colors.textSecondary} />,
             selected: sortBy === 'duration',
             onPress: () => handleSort('duration'),
@@ -326,9 +326,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filterBtn: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     borderRadius: Radii.md,
+    backgroundColor: Colors.surfaceElevated,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -345,6 +348,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.surface,
     borderRadius: Radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     paddingHorizontal: Spacing.md,
     paddingVertical: 11,
     gap: Spacing.md,
@@ -362,16 +367,24 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     flex: 1,
+    alignItems: 'flex-start',
   },
   categoryTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
+    fontSize: 14,
+    lineHeight: 22,
     color: Colors.textPrimary,
-    marginBottom: 2,
+    marginBottom: 1,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   categorySubtitle: {
-    fontSize: 12,
+    fontFamily: Fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 18,
     color: Colors.textSecondary,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   recentSection: {
     marginTop: Spacing.xs,

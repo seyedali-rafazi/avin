@@ -1,1 +1,1 @@
-export { Colors, Typography, Spacing, Radii, IconSizes, Layout } from './tokens';
+export { Colors, Fonts, Typography, Spacing, Radii, IconSizes, Layout } from './tokens';

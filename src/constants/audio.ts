@@ -26,7 +26,7 @@ export const SUPPORTED_AUDIO_MIME_TYPES = [
 ] as const;
 
 export const APP_INFO = {
-  name: 'Avin',
+  name: 'آوین',
   version: '1.0.0',
-  tagline: 'Offline-First Local Music Player',
+  tagline: 'پخش‌کننده موسیقی آفلاین و محلی',
 } as const;

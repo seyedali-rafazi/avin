@@ -23,16 +23,16 @@ import {
 import { playlistRepository, songRepository } from '@/database/repositories';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useLibraryStore, usePlayerStore, useSearchStore } from '@/stores';
-import { Colors, Layout, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import type { SearchTab, Song } from '@/types/music';
-import { formatSongCount } from '@/utils/format';
+import { formatSongCount, localizeMetadata } from '@/utils/format';
 
 const TABS: { key: SearchTab; label: string }[] = [
-  { key: 'songs', label: 'Songs' },
-  { key: 'artists', label: 'Artists' },
-  { key: 'albums', label: 'Albums' },
-  { key: 'playlists', label: 'Playlists' },
-  { key: 'genres', label: 'Genres' },
+  { key: 'songs', label: 'آهنگ‌ها' },
+  { key: 'artists', label: 'هنرمندان' },
+  { key: 'albums', label: 'آلبوم‌ها' },
+  { key: 'playlists', label: 'پلی‌لیست‌ها' },
+  { key: 'genres', label: 'سبک‌ها' },
 ];
 
 export default function SearchScreen() {
@@ -101,20 +101,20 @@ export default function SearchScreen() {
 
   return (
     <ScreenContainer edges={['top', 'bottom']}>
-      <ScreenHeader title="Search" onBack={() => router.back()} compact />
+      <ScreenHeader title="جستجو" onBack={() => router.back()} compact />
 
-      {/* Search Bar matching Reference Screen #5 */}
+      {/* Search Bar */}
       <View style={styles.searchWrap}>
         <SearchBar
           value={query}
           onChangeText={setQuery}
-          placeholder="Search songs, artists, albums..."
+          placeholder="جستجوی آهنگ، هنرمند، آلبوم..."
           autoFocus
           onSubmitEditing={handleSubmit}
         />
       </View>
 
-      {/* Filter Pills matching Reference Screen #5 */}
+      {/* Filter Pills */}
       <View style={styles.pillsContainer}>
         <ScrollView
           horizontal
@@ -144,9 +144,9 @@ export default function SearchScreen() {
           history.length > 0 ? (
             <View style={styles.historyContainer}>
               <View style={styles.historyHeader}>
-                <Text style={styles.historyTitle}>Recent Searches</Text>
+                <Text style={styles.historyTitle}>جستجوهای اخیر</Text>
                 <Pressable onPress={clearHistory} hitSlop={8}>
-                  <Text style={styles.clearAll}>Clear all</Text>
+                  <Text style={styles.clearAll}>پاک کردن همه</Text>
                 </Pressable>
               </View>
               {history.map((item) => (
@@ -162,7 +162,7 @@ export default function SearchScreen() {
                   <Pressable
                     onPress={() => removeHistoryItem(item)}
                     hitSlop={10}
-                    accessibilityLabel={`Remove ${item} from search history`}
+                    accessibilityLabel={`حذف ${item} از تاریخچه جستجو`}
                   >
                     <X size={16} color={Colors.textMuted} />
                   </Pressable>
@@ -172,16 +172,16 @@ export default function SearchScreen() {
           ) : (
             <EmptyState
               icon={<Search size={28} color={Colors.accent} />}
-              title="Search Your Music"
-              description="Find songs, artists, albums, playlists, and genres stored on your device."
+              title="در موسیقی‌هایتان جستجو کنید"
+              description="آهنگ‌ها، هنرمندان، آلبوم‌ها، پلی‌لیست‌ها و سبک‌های ذخیره‌شده روی دستگاه را سریع پیدا کنید."
             />
           )
         ) : activeTab === 'songs' ? (
           songResults.length === 0 ? (
             <EmptyState
               icon={<Search size={28} color={Colors.accent} />}
-              title="No Songs Found"
-              description={`No tracks matched "${debouncedQuery}".`}
+              title="آهنگی پیدا نشد"
+              description={`هیچ آهنگی با عبارت «${debouncedQuery}» مطابقت نداشت.`}
             />
           ) : (
             <FlatList
@@ -206,8 +206,8 @@ export default function SearchScreen() {
           artistResults.length === 0 ? (
             <EmptyState
               icon={<Search size={28} color={Colors.accent} />}
-              title="No Artists Found"
-              description={`No artists matched "${debouncedQuery}".`}
+              title="هنرمندی پیدا نشد"
+              description={`هیچ هنرمندی با عبارت «${debouncedQuery}» مطابقت نداشت.`}
             />
           ) : (
             <FlatList
@@ -220,7 +220,11 @@ export default function SearchScreen() {
                     saveToHistory(debouncedQuery);
                     router.push({
                       pathname: '/library/detail',
-                      params: { type: 'artist', value: item.name, title: item.name },
+                      params: {
+                        type: 'artist',
+                        value: item.name,
+                        title: localizeMetadata(item.name, 'هنرمند ناشناس'),
+                      },
                     });
                   }}
                 />
@@ -231,8 +235,8 @@ export default function SearchScreen() {
           albumResults.length === 0 ? (
             <EmptyState
               icon={<Disc size={28} color={Colors.accent} />}
-              title="No Albums Found"
-              description={`No albums matched "${debouncedQuery}".`}
+              title="آلبومی پیدا نشد"
+              description={`هیچ آلبومی با عبارت «${debouncedQuery}» مطابقت نداشت.`}
             />
           ) : (
             <FlatList
@@ -244,7 +248,11 @@ export default function SearchScreen() {
                     saveToHistory(debouncedQuery);
                     router.push({
                       pathname: '/library/detail',
-                      params: { type: 'album', value: item.title, title: item.title },
+                      params: {
+                        type: 'album',
+                        value: item.title,
+                        title: localizeMetadata(item.title, 'آلبوم ناشناس'),
+                      },
                     });
                   }}
                   style={({ pressed }) => [styles.entityRow, pressed && styles.pressed]}
@@ -252,10 +260,11 @@ export default function SearchScreen() {
                   <AlbumArtwork uri={item.artworkUri} size={48} borderRadius={Radii.sm} />
                   <View style={styles.entityInfo}>
                     <Text style={styles.entityTitle} numberOfLines={1}>
-                      {item.title}
+                      {localizeMetadata(item.title, 'آلبوم ناشناس')}
                     </Text>
                     <Text style={styles.entitySub} numberOfLines={1}>
-                      {item.artist} • {formatSongCount(item.songCount ?? 0)}
+                      {localizeMetadata(item.artist, 'هنرمند ناشناس')} •{' '}
+                      {formatSongCount(item.songCount ?? 0)}
                     </Text>
                   </View>
                 </Pressable>
@@ -266,8 +275,8 @@ export default function SearchScreen() {
           playlistResults.length === 0 ? (
             <EmptyState
               icon={<ListMusic size={28} color={Colors.accent} />}
-              title="No Playlists Found"
-              description={`No playlists matched "${debouncedQuery}".`}
+              title="پلی‌لیستی پیدا نشد"
+              description={`هیچ پلی‌لیستی با عبارت «${debouncedQuery}» مطابقت نداشت.`}
             />
           ) : (
             <FlatList
@@ -297,8 +306,8 @@ export default function SearchScreen() {
         ) : genreResults.length === 0 ? (
           <EmptyState
             icon={<Tag size={28} color={Colors.accent} />}
-            title="No Genres Found"
-            description={`No genres matched "${debouncedQuery}".`}
+            title="سبکی پیدا نشد"
+            description={`هیچ سبکی با عبارت «${debouncedQuery}» مطابقت نداشت.`}
           />
         ) : (
           <FlatList
@@ -310,7 +319,11 @@ export default function SearchScreen() {
                   saveToHistory(debouncedQuery);
                   router.push({
                     pathname: '/library/detail',
-                    params: { type: 'genre', value: item.name, title: item.name },
+                    params: {
+                      type: 'genre',
+                      value: item.name,
+                      title: localizeMetadata(item.name, 'سبک ناشناس'),
+                    },
                   });
                 }}
                 style={({ pressed }) => [styles.entityRow, pressed && styles.pressed]}
@@ -319,7 +332,9 @@ export default function SearchScreen() {
                   <Tag size={18} color={Colors.accentSecondary} />
                 </View>
                 <View style={styles.entityInfo}>
-                  <Text style={styles.entityTitle}>{item.name}</Text>
+                  <Text style={styles.entityTitle}>
+                    {localizeMetadata(item.name, 'سبک ناشناس')}
+                  </Text>
                   <Text style={styles.entitySub}>{formatSongCount(item.songCount)}</Text>
                 </View>
               </Pressable>
@@ -353,16 +368,20 @@ const styles = StyleSheet.create({
   },
   pill: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: Radii.full,
     backgroundColor: Colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
   },
   pillActive: {
     backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
   },
   pillText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
+    fontSize: 12.5,
+    lineHeight: 20,
     color: Colors.textSecondary,
   },
   pillTextActive: {
@@ -385,14 +404,16 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   historyTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
+    fontSize: 14,
+    lineHeight: 22,
     color: Colors.textPrimary,
   },
   clearAll: {
-    fontSize: 13,
+    fontFamily: Fonts.medium,
+    fontSize: 12.5,
+    lineHeight: 20,
     color: Colors.accentSecondary,
-    fontWeight: '500',
   },
   historyRow: {
     flexDirection: 'row',
@@ -402,8 +423,12 @@ const styles = StyleSheet.create({
   },
   historyItemText: {
     flex: 1,
+    fontFamily: Fonts.regular,
     color: Colors.textPrimary,
-    fontSize: 14,
+    fontSize: 13.5,
+    lineHeight: 22,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   entityRow: {
     flexDirection: 'row',
@@ -414,16 +439,24 @@ const styles = StyleSheet.create({
   },
   entityInfo: {
     flex: 1,
+    alignItems: 'flex-start',
   },
   entityTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
+    fontSize: 14,
+    lineHeight: 22,
     color: Colors.textPrimary,
     marginBottom: 2,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   entitySub: {
-    fontSize: 12,
+    fontFamily: Fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 18,
     color: Colors.textSecondary,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   genreBadge: {
     width: 46,

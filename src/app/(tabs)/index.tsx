@@ -30,9 +30,14 @@ import {
 } from '@/components';
 import { useSongSelection } from '@/hooks/useSongSelection';
 import { useLibraryStore, usePlayerStore, usePlaylistStore } from '@/stores';
-import { Colors, Layout, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import type { Song } from '@/types/music';
-import { formatSongCount } from '@/utils/format';
+import {
+  formatNumber,
+  formatSongCount,
+  getTimeGreeting,
+  localizeMetadata,
+} from '@/utils/format';
 
 const AVIN_LOGO = require('../../../assets/Avin-logo.png');
 
@@ -70,22 +75,22 @@ export default function HomeScreen() {
     const res = await scanDevice();
     if (res.requiresDevBuild) {
       Alert.alert(
-        'Development Build Required',
-        res.error ?? 'Use Import Files to load local audio in Expo Go.',
+        'نیازمند نسخه نصبی',
+        res.error ?? 'برای وارد کردن فایل‌های صوتی از گزینه افزودن فایل استفاده کنید.',
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Import Files', onPress: () => void handleImport() },
+          { text: 'انصراف', style: 'cancel' },
+          { text: 'افزودن فایل', onPress: () => void handleImport() },
         ]
       );
     } else if (res.error) {
-      Alert.alert('Library Scan', res.error);
+      Alert.alert('اسکن کتابخانه', res.error);
     } else if (res.scanned === 0) {
       Alert.alert(
-        'No Audio Files Found',
-        'No local music files were found on this device. You can also import audio files directly.',
+        'فایل صوتی یافت نشد',
+        'هیچ فایل موسیقی در حافظه دستگاه پیدا نشد. می‌توانید فایل‌های صوتی را به صورت دستی اضافه کنید.',
         [
-          { text: 'OK', style: 'cancel' },
-          { text: 'Import Files', onPress: () => void handleImport() },
+          { text: 'باشه', style: 'cancel' },
+          { text: 'افزودن فایل', onPress: () => void handleImport() },
         ]
       );
     }
@@ -94,7 +99,7 @@ export default function HomeScreen() {
   const handleImport = async () => {
     const res = await importFiles();
     if (res.error) {
-      Alert.alert('Import Error', res.error);
+      Alert.alert('خطا در افزودن فایل', res.error);
     }
   };
 
@@ -118,13 +123,13 @@ export default function HomeScreen() {
               />
             </View>
             <View style={styles.brandTextWrap}>
-              <Text style={styles.brandName}>Avin</Text>
+              <Text style={styles.brandName}>آوین</Text>
               <Text style={styles.brandMeta} numberOfLines={1}>
                 {isScanning && scanProgress
-                  ? `Scanning ${scanProgress.scanned}${scanProgress.total > 0 ? ` / ${scanProgress.total}` : ''}...`
+                  ? `در حال اسکن ${formatNumber(scanProgress.scanned)}${scanProgress.total > 0 ? ` از ${formatNumber(scanProgress.total)}` : ''}...`
                   : songs.length > 0
-                    ? formatSongCount(songs.length)
-                    : 'Local Music'}
+                    ? `${getTimeGreeting()} • ${formatSongCount(songs.length)}`
+                    : 'پخش‌کننده موسیقی آفلاین'}
               </Text>
             </View>
           </View>
@@ -135,7 +140,7 @@ export default function HomeScreen() {
               hitSlop={8}
               style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
               accessibilityRole="button"
-              accessibilityLabel="Search music"
+              accessibilityLabel="جستجوی موسیقی"
             >
               <Search size={19} color={Colors.textPrimary} />
             </Pressable>
@@ -144,7 +149,7 @@ export default function HomeScreen() {
               hitSlop={8}
               style={({ pressed }) => [styles.headerBtn, pressed && styles.pressed]}
               accessibilityRole="button"
-              accessibilityLabel="Scan device for music"
+              accessibilityLabel="اسکن دستگاه برای یافتن موسیقی"
             >
               {isScanning ? (
                 <ActivityIndicator size="small" color={Colors.accentSecondary} />
@@ -159,11 +164,11 @@ export default function HomeScreen() {
           <View style={styles.emptyWrap}>
             <EmptyState
               icon={<Music size={30} color={Colors.accent} />}
-              title="Your Music Library Is Empty"
-              description="Scan your device to discover all local audio files or import tracks directly for offline listening."
-              actionLabel={isScanning ? 'Scanning...' : 'Scan Device'}
+              title="کتابخانه موسیقی شما خالی است"
+              description="حافظه دستگاه را اسکن کنید تا تمام فایل‌های صوتی پیدا شوند، یا آهنگ‌ها را به صورت دستی اضافه کنید."
+              actionLabel={isScanning ? 'در حال اسکن...' : 'اسکن دستگاه'}
               onAction={() => void handleScan()}
-              secondaryActionLabel="Import Files"
+              secondaryActionLabel="افزودن فایل"
               onSecondaryAction={() => void handleImport()}
             />
           </View>
@@ -175,10 +180,10 @@ export default function HomeScreen() {
                 onPress={handleShuffleAll}
                 style={({ pressed }) => [styles.shuffleAllBtn, pressed && styles.pressed]}
                 accessibilityRole="button"
-                accessibilityLabel="Shuffle all songs"
+                accessibilityLabel="پخش تصادفی همه آهنگ‌ها"
               >
                 <Shuffle size={15} color={Colors.textPrimary} />
-                <Text style={styles.shuffleAllText}>Shuffle All</Text>
+                <Text style={styles.shuffleAllText}>پخش تصادفی</Text>
               </Pressable>
 
               <Pressable
@@ -190,17 +195,17 @@ export default function HomeScreen() {
                 }
                 style={({ pressed }) => [styles.allSongsBtn, pressed && styles.pressed]}
                 accessibilityRole="button"
-                accessibilityLabel="View all songs"
+                accessibilityLabel="مشاهده همه آهنگ‌ها"
               >
                 <Music size={15} color={Colors.accentSecondary} />
-                <Text style={styles.allSongsText}>All Songs</Text>
+                <Text style={styles.allSongsText}>همه آهنگ‌ها</Text>
               </Pressable>
 
               <Pressable
                 onPress={() => void handleImport()}
                 style={({ pressed }) => [styles.importIconBtn, pressed && styles.pressed]}
                 accessibilityRole="button"
-                accessibilityLabel="Import audio files"
+                accessibilityLabel="افزودن فایل صوتی"
               >
                 <FolderPlus size={17} color={Colors.textSecondary} />
               </Pressable>
@@ -210,7 +215,7 @@ export default function HomeScreen() {
             {recentPlayedPreview.length > 0 ? (
               <View style={styles.section}>
                 <SectionHeader
-                  title="Recently Played"
+                  title="اخیراً پخش‌شده"
                   onActionPress={() =>
                     router.push({
                       pathname: '/library/[category]',
@@ -241,7 +246,7 @@ export default function HomeScreen() {
                         {item.title}
                       </Text>
                       <Text style={styles.recentArtist} numberOfLines={1}>
-                        {item.artist}
+                        {localizeMetadata(item.artist, 'هنرمند ناشناس')}
                       </Text>
                     </Pressable>
                   )}
@@ -252,7 +257,7 @@ export default function HomeScreen() {
             {/* Your Playlists Horizontal Row */}
             <View style={styles.section}>
               <SectionHeader
-                title="Your Playlists"
+                title="پلی‌لیست‌های شما"
                 onActionPress={() => router.push('/(tabs)/playlists')}
               />
               <ScrollView
@@ -261,7 +266,7 @@ export default function HomeScreen() {
                 contentContainerStyle={styles.horizontalList}
               >
                 <PlaylistCard
-                  title="Favorites"
+                  title="علاقه‌مندی‌ها"
                   songCount={favoriteSongs.length}
                   isFavorites
                   width={Layout.horizontalCardWidth}
@@ -291,7 +296,7 @@ export default function HomeScreen() {
             {/* Recently Added Section */}
             <View style={styles.section}>
               <SectionHeader
-                title="Recently Added"
+                title="تازه اضافه‌شده"
                 onActionPress={() =>
                   router.push({
                     pathname: '/library/[category]',
@@ -367,9 +372,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   logoFrame: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 11,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(176, 106, 255, 0.35)',
@@ -381,19 +386,23 @@ const styles = StyleSheet.create({
   },
   brandTextWrap: {
     flex: 1,
+    alignItems: 'flex-start',
   },
   brandName: {
-    fontSize: 21,
-    fontWeight: '700',
-    letterSpacing: -0.4,
+    fontFamily: Fonts.extraBold,
+    fontSize: 20,
     color: Colors.textPrimary,
-    lineHeight: 24,
+    lineHeight: 28,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   brandMeta: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontFamily: Fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 18,
     color: Colors.textSecondary,
-    marginTop: 1,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   headerActions: {
     flexDirection: 'row',
@@ -422,22 +431,28 @@ const styles = StyleSheet.create({
   },
   shuffleAllBtn: {
     flex: 1,
-    height: 42,
+    height: 44,
     borderRadius: Radii.full,
     backgroundColor: Colors.accent,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
+    shadowColor: Colors.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.32,
+    shadowRadius: 10,
+    elevation: 6,
   },
   shuffleAllText: {
+    fontFamily: Fonts.bold,
     color: Colors.textPrimary,
     fontSize: 13,
-    fontWeight: '700',
+    lineHeight: 20,
   },
   allSongsBtn: {
     flex: 1,
-    height: 42,
+    height: 44,
     borderRadius: Radii.full,
     backgroundColor: Colors.surface,
     borderWidth: 1,
@@ -448,14 +463,15 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   allSongsText: {
+    fontFamily: Fonts.semiBold,
     color: Colors.textPrimary,
     fontSize: 13,
-    fontWeight: '600',
+    lineHeight: 20,
   },
   importIconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -474,16 +490,26 @@ const styles = StyleSheet.create({
   },
   recentCard: {
     width: Layout.horizontalCardWidth,
+    alignItems: 'flex-start',
   },
   recentTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
+    fontSize: 12.5,
+    lineHeight: 20,
     color: Colors.textPrimary,
     marginTop: 7,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    width: '100%',
   },
   recentArtist: {
+    fontFamily: Fonts.regular,
     fontSize: 11,
+    lineHeight: 17,
     color: Colors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    width: '100%',
   },
 });

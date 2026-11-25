@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Heart, ListMusic, Plus } from 'lucide-react-native';
-import { Colors, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Radii, Spacing } from '@/theme';
 import { formatSongCount } from '@/utils/format';
 
 interface PlaylistCardProps {
@@ -103,7 +103,7 @@ interface CreatePlaylistCardProps {
   style?: ViewStyle;
 }
 
-export function CreatePlaylistCard({ onPress, height = 178, style }: CreatePlaylistCardProps) {
+export function CreatePlaylistCard({ onPress, height = 180, style }: CreatePlaylistCardProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -114,10 +114,12 @@ export function CreatePlaylistCard({ onPress, height = 178, style }: CreatePlayl
         style,
       ]}
       accessibilityRole="button"
-      accessibilityLabel="Create Playlist"
+      accessibilityLabel="ساخت پلی‌لیست جدید"
     >
-      <Plus size={26} color={Colors.textSecondary} />
-      <Text style={styles.createLabel}>{'Create\nPlaylist'}</Text>
+      <View style={styles.createIconCircle}>
+        <Plus size={22} color={Colors.accentSecondary} />
+      </View>
+      <Text style={styles.createLabel}>{'ساخت پلی‌لیست\nجدید'}</Text>
     </Pressable>
   );
 }
@@ -126,6 +128,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,
     borderRadius: Radii.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     overflow: 'hidden',
   },
   pressed: {
@@ -158,16 +162,24 @@ const styles = StyleSheet.create({
   meta: {
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
+    alignItems: 'flex-start',
   },
   title: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
+    fontSize: 13.5,
+    lineHeight: 22,
     color: Colors.textPrimary,
     marginBottom: 2,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   count: {
+    fontFamily: Fonts.regular,
     fontSize: 11,
+    lineHeight: 17,
     color: Colors.textSecondary,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   createCard: {
     borderRadius: Radii.xl,
@@ -178,12 +190,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+  },
+  createIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.surfaceIconBadge,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   createLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontFamily: Fonts.medium,
+    fontSize: 13,
     color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 21,
   },
 });

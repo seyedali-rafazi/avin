@@ -10,7 +10,7 @@ import {
   User,
 } from 'lucide-react-native';
 import { BottomSheet, type SheetOption } from '@/components/ui/BottomSheet';
-import { Colors, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Radii } from '@/theme';
 import type { Song, SortField, SortOrder } from '@/types/music';
 
 interface SortSheetProps {
@@ -23,22 +23,22 @@ interface SortSheetProps {
 }
 
 const SORT_LABELS: Record<SortField, string> = {
-  dateAdded: 'Time Added',
-  title: 'Song Name',
-  artist: 'Artist',
-  duration: 'Duration',
-  album: 'Album',
-  playCount: 'Most Played',
+  dateAdded: 'زمان افزودن',
+  title: 'نام آهنگ',
+  artist: 'هنرمند',
+  duration: 'مدت زمان',
+  album: 'آلبوم',
+  playCount: 'پربازدیدترین',
 };
 
 function getOrderHint(field: SortField, order: SortOrder): string {
   if (field === 'dateAdded') {
-    return order === 'desc' ? 'Newest first' : 'Oldest first';
+    return order === 'desc' ? 'جدیدترین' : 'قدیمی‌ترین';
   }
   if (field === 'duration') {
-    return order === 'desc' ? 'Longest first' : 'Shortest first';
+    return order === 'desc' ? 'بلندترین' : 'کوتاه‌ترین';
   }
-  return order === 'asc' ? 'A → Z' : 'Z → A';
+  return order === 'asc' ? 'الف تا ی' : 'ی تا الف';
 }
 
 function getDefaultOrder(field: SortField): SortOrder {
@@ -51,7 +51,7 @@ export function SortSheet({
   sortBy,
   sortOrder,
   onSelect,
-  title = 'Sort Songs',
+  title = 'مرتب‌سازی آهنگ‌ها',
 }: SortSheetProps) {
   const handlePick = (field: SortField) => {
     if (sortBy === field) {
@@ -66,10 +66,10 @@ export function SortSheet({
     label: string;
     Icon: React.ComponentType<{ size?: number; color?: string }>;
   }[] = [
-    { field: 'dateAdded', label: 'Time Added', Icon: Calendar },
-    { field: 'title', label: 'Song Name', Icon: Music },
-    { field: 'artist', label: 'Artist Name', Icon: User },
-    { field: 'duration', label: 'Duration', Icon: Clock },
+    { field: 'dateAdded', label: 'زمان افزودن', Icon: Calendar },
+    { field: 'title', label: 'نام آهنگ', Icon: Music },
+    { field: 'artist', label: 'نام هنرمند', Icon: User },
+    { field: 'duration', label: 'مدت زمان', Icon: Clock },
   ];
 
   const options: SheetOption[] = fields.map(({ field, label, Icon }) => {
@@ -94,7 +94,7 @@ export function SortSheet({
       visible={visible}
       onClose={onClose}
       title={title}
-      subtitle="Tap an active option to reverse order"
+      subtitle="برای تغییر جهت مرتب‌سازی دوباره ضربه بزنید"
       options={options}
     />
   );
@@ -113,7 +113,7 @@ export function SortPill({ sortBy, sortOrder, onPress }: SortPillProps) {
       onPress={onPress}
       style={({ pressed }) => [styles.pill, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={`Sorted by ${SORT_LABELS[sortBy]}, tap to change`}
+      accessibilityLabel={`مرتب‌سازی بر اساس ${SORT_LABELS[sortBy]}`}
     >
       <ArrowUpDown size={13} color={Colors.accentSecondary} />
       <Text style={styles.pillText}>{SORT_LABELS[sortBy]}</Text>
@@ -132,11 +132,11 @@ export function sortSongsList(
   copy.sort((a, b) => {
     switch (sortBy) {
       case 'title':
-        return a.title.localeCompare(b.title) * dir;
+        return a.title.localeCompare(b.title, 'fa') * dir;
       case 'artist':
-        return a.artist.localeCompare(b.artist) * dir;
+        return a.artist.localeCompare(b.artist, 'fa') * dir;
       case 'album':
-        return a.album.localeCompare(b.album) * dir;
+        return a.album.localeCompare(b.album, 'fa') * dir;
       case 'duration':
         return (a.duration - b.duration) * dir;
       case 'playCount':
@@ -156,14 +156,15 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: Colors.surfaceElevated,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: Radii.full,
     borderWidth: 1,
     borderColor: Colors.border,
   },
   pillText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontFamily: Fonts.semiBold,
+    fontSize: 11.5,
+    lineHeight: 18,
     color: Colors.textPrimary,
   },
   pressed: {

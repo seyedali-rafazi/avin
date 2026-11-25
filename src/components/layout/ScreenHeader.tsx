@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowRight } from 'lucide-react-native';
 import { Colors, Layout, Spacing, Typography } from '@/theme';
 
 interface ScreenHeaderProps {
@@ -20,16 +20,16 @@ export function ScreenHeader({
 }: ScreenHeaderProps) {
   return (
     <View style={[styles.container, compact && styles.compact]}>
-      <View style={styles.leftRow}>
+      <View style={styles.startRow}>
         {onBack ? (
           <Pressable
             onPress={onBack}
             hitSlop={12}
             style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel="بازگشت"
           >
-            <ArrowLeft size={22} color={Colors.textPrimary} />
+            <ArrowRight size={20} color={Colors.textPrimary} />
           </Pressable>
         ) : null}
         <View style={styles.textBlock}>
@@ -46,7 +46,7 @@ export function ScreenHeader({
           ) : null}
         </View>
       </View>
-      {rightElement ? <View style={styles.right}>{rightElement}</View> : null}
+      {rightElement ? <View style={styles.end}>{rightElement}</View> : null}
     </View>
   );
 }
@@ -59,20 +59,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.screenPadding,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.md,
+    gap: Spacing.sm,
   },
   compact: {
     paddingBottom: Spacing.sm,
   },
-  leftRow: {
+  startRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
     gap: Spacing.md,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -81,12 +85,13 @@ const styles = StyleSheet.create({
   },
   textBlock: {
     flex: 1,
+    alignItems: 'flex-start',
   },
   subtitle: {
     ...Typography.subtitle,
-    marginTop: 2,
+    marginTop: 1,
   },
-  right: {
+  end: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,

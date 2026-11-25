@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { ChevronRight } from 'lucide-react-native';
-import { Colors, Layout, Radii, Spacing } from '@/theme';
+import { ChevronLeft } from 'lucide-react-native';
+import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 
 interface SettingsSectionProps {
   title: string;
@@ -46,7 +46,7 @@ export function SettingsRow({
 }: SettingsRowProps) {
   const content = (
     <View style={[styles.row, !isLast && styles.rowBorder]}>
-      <View style={styles.left}>
+      <View style={styles.start}>
         {icon ? <View style={styles.iconWrap}>{icon}</View> : null}
         <View style={styles.labelWrap}>
           <Text style={[styles.title, destructive && styles.destructiveText]}>{title}</Text>
@@ -54,7 +54,7 @@ export function SettingsRow({
         </View>
       </View>
 
-      <View style={styles.right}>
+      <View style={styles.end}>
         {valueText ? <Text style={styles.valueText}>{valueText}</Text> : null}
         {rightElement}
         {typeof switchValue === 'boolean' && onSwitchChange ? (
@@ -65,7 +65,7 @@ export function SettingsRow({
             thumbColor={Colors.switchThumb}
           />
         ) : null}
-        {showChevron ? <ChevronRight size={17} color={Colors.textMuted} /> : null}
+        {showChevron ? <ChevronLeft size={17} color={Colors.textMuted} /> : null}
       </View>
     </View>
   );
@@ -87,15 +87,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: Layout.screenPadding,
   },
   sectionHeader: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontFamily: Fonts.semiBold,
+    fontSize: 12.5,
+    lineHeight: 20,
     color: Colors.textSecondary,
     marginBottom: Spacing.sm,
-    marginLeft: 2,
+    marginRight: 4,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   card: {
     backgroundColor: Colors.surface,
     borderRadius: Radii.xl,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     overflow: 'hidden',
   },
   row: {
@@ -104,13 +109,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
     paddingVertical: 14,
-    minHeight: 54,
+    minHeight: 56,
+    gap: Spacing.md,
   },
   rowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.divider,
   },
-  left: {
+  start: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
@@ -123,27 +129,37 @@ const styles = StyleSheet.create({
   },
   labelWrap: {
     flex: 1,
+    alignItems: 'flex-start',
   },
   title: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontFamily: Fonts.medium,
+    fontSize: 14,
+    lineHeight: 22,
     color: Colors.textPrimary,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   destructiveText: {
     color: Colors.danger,
   },
   subtitle: {
-    fontSize: 12,
+    fontFamily: Fonts.regular,
+    fontSize: 11.5,
+    lineHeight: 18,
     color: Colors.textMuted,
     marginTop: 2,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
-  right: {
+  end: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
   },
   valueText: {
-    fontSize: 14,
+    fontFamily: Fonts.regular,
+    fontSize: 13,
+    lineHeight: 20,
     color: Colors.textSecondary,
   },
   pressed: {

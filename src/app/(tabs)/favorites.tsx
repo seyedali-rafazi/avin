@@ -15,7 +15,7 @@ import {
 } from '@/components';
 import { useSongSelection } from '@/hooks/useSongSelection';
 import { useLibraryStore, usePlayerStore } from '@/stores';
-import { Colors, Layout, Spacing } from '@/theme';
+import { Colors, Fonts, Layout, Spacing } from '@/theme';
 import type { Song, SortField, SortOrder } from '@/types/music';
 import { formatSongCount } from '@/utils/format';
 
@@ -39,7 +39,7 @@ export default function FavoritesScreen() {
   return (
     <ScreenContainer>
       <ScreenHeader
-        title="Favorites"
+        title="علاقه‌مندی‌ها"
         subtitle={formatSongCount(sortedFavorites.length)}
         rightElement={
           sortedFavorites.length > 0 ? (
@@ -55,8 +55,8 @@ export default function FavoritesScreen() {
       {sortedFavorites.length === 0 ? (
         <EmptyState
           icon={<Heart size={30} color={Colors.accent} />}
-          title="No Favorite Songs Yet"
-          description="Tap the heart icon while listening to any track to save it here for quick access."
+          title="هنوز آهنگ موردعلاقه‌ای ندارید"
+          description="هنگام گوش دادن به هر آهنگ، آیکون قلب را لمس کنید تا برای دسترسی سریع اینجا ذخیره شود."
         />
       ) : (
         <FlatList
@@ -65,7 +65,7 @@ export default function FavoritesScreen() {
           ListHeaderComponent={
             <View style={styles.actionsRow}>
               <PrimaryButton
-                label="Play All"
+                label="پخش همه"
                 icon={<Play size={15} color={Colors.textPrimary} fill={Colors.textPrimary} />}
                 onPress={() => void playQueue(sortedFavorites, 0, false)}
                 style={styles.actionBtn}
@@ -75,7 +75,7 @@ export default function FavoritesScreen() {
                 style={({ pressed }) => [styles.shuffleBtn, pressed && styles.pressed]}
               >
                 <Shuffle size={16} color={Colors.accentSecondary} />
-                <Text style={styles.shuffleText}>Shuffle</Text>
+                <Text style={styles.shuffleText}>پخش تصادفی</Text>
               </Pressable>
             </View>
           }
@@ -122,7 +122,7 @@ export default function FavoritesScreen() {
         onClose={() => setSortSheetVisible(false)}
         sortBy={sortBy}
         sortOrder={sortOrder}
-        title="Sort Favorites"
+        title="مرتب‌سازی علاقه‌مندی‌ها"
         onSelect={(field, order) => {
           setSortBy(field);
           setSortOrder(order);
@@ -160,9 +160,10 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   shuffleText: {
+    fontFamily: Fonts.semiBold,
     color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13.5,
+    lineHeight: 22,
   },
   pressed: {
     opacity: 0.78,

@@ -18,9 +18,9 @@ import {
 import { songRepository } from '@/database/repositories';
 import { useSongSelection } from '@/hooks/useSongSelection';
 import { useLibraryStore, usePlayerStore } from '@/stores';
-import { Colors, Layout, Radii, Spacing } from '@/theme';
+import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import type { Song, SortField, SortOrder } from '@/types/music';
-import { formatSongCount } from '@/utils/format';
+import { formatSongCount, localizeMetadata } from '@/utils/format';
 
 export default function LibraryDetailScreen() {
   const { type, value, title } = useLocalSearchParams<{
@@ -65,7 +65,7 @@ export default function LibraryDetailScreen() {
   return (
     <ScreenContainer edges={['top', 'bottom']}>
       <ScreenHeader
-        title={title ?? value ?? 'Tracks'}
+        title={localizeMetadata(title ?? value, 'آهنگ‌ها')}
         subtitle={formatSongCount(songs.length)}
         onBack={() => router.back()}
         rightElement={
@@ -82,8 +82,8 @@ export default function LibraryDetailScreen() {
       {songs.length === 0 ? (
         <EmptyState
           icon={<Music size={28} color={Colors.accent} />}
-          title="No Tracks Available"
-          description="No audio files were found in this collection."
+          title="آهنگی وجود ندارد"
+          description="هیچ فایل صوتی در این مجموعه پیدا نشد."
         />
       ) : (
         <FlatList
@@ -92,7 +92,7 @@ export default function LibraryDetailScreen() {
           ListHeaderComponent={
             <View style={styles.actionsRow}>
               <PrimaryButton
-                label="Play All"
+                label="پخش همه"
                 icon={<Play size={15} color={Colors.textPrimary} fill={Colors.textPrimary} />}
                 onPress={() => void playQueue(songs, 0, false)}
                 style={styles.flexBtn}
@@ -102,7 +102,7 @@ export default function LibraryDetailScreen() {
                 style={({ pressed }) => [styles.shuffleBtn, pressed && styles.pressed]}
               >
                 <Shuffle size={16} color={Colors.accentSecondary} />
-                <Text style={styles.shuffleText}>Shuffle</Text>
+                <Text style={styles.shuffleText}>پخش تصادفی</Text>
               </Pressable>
             </View>
           }
@@ -184,9 +184,10 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   shuffleText: {
+    fontFamily: Fonts.semiBold,
     color: Colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13.5,
+    lineHeight: 22,
   },
   pressed: {
     opacity: 0.78,

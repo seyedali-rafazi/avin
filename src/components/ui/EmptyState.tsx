@@ -52,10 +52,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xxxl,
   },
   iconBadge: {
-    width: 68,
-    height: 68,
+    width: 72,
+    height: 72,
     borderRadius: Radii.xl,
     backgroundColor: Colors.surfaceIconBadge,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(176, 106, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.lg,
@@ -68,7 +70,7 @@ const styles = StyleSheet.create({
   description: {
     ...Typography.subtitle,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
     marginBottom: Spacing.xl,
   },
   actions: {

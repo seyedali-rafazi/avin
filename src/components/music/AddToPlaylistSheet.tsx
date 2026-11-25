@@ -12,8 +12,8 @@ import { AppModal } from '@/components/ui/AppModal';
 import { BottomSheet, type SheetOption } from '@/components/ui/BottomSheet';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { usePlaylistStore } from '@/stores';
-import { Colors, Radii, Spacing } from '@/theme';
-import { formatSongCount } from '@/utils/format';
+import { Colors, Fonts, Radii, Spacing } from '@/theme';
+import { formatNumber, formatSongCount } from '@/utils/format';
 
 interface AddToPlaylistSheetProps {
   visible: boolean;
@@ -37,14 +37,13 @@ export function AddToPlaylistSheet({
 
   const handleOpenCreate = () => {
     setNewPlaylistName('');
-    // BottomSheet closes itself before calling option.onPress
     setTimeout(() => setCreateModalVisible(true), 120);
   };
 
   const handleCreateAndAdd = () => {
     const trimmed = newPlaylistName.trim();
     if (!trimmed) {
-      Alert.alert('Invalid Name', 'Please enter a playlist name.');
+      Alert.alert('نام نامعتبر', 'لطفاً یک نام برای پلی‌لیست وارد کنید.');
       return;
     }
 
@@ -59,8 +58,8 @@ export function AddToPlaylistSheet({
 
   const options: SheetOption[] = [
     {
-      label: 'Create Playlist',
-      subtitle: 'Start a new playlist with selected audio',
+      label: 'ساخت پلی‌لیست جدید',
+      subtitle: 'ایجاد پلی‌لیست با آهنگ‌های انتخاب‌شده',
       accent: true,
       icon: (
         <View style={styles.createIconBadge}>
@@ -87,10 +86,10 @@ export function AddToPlaylistSheet({
       <BottomSheet
         visible={visible}
         onClose={onClose}
-        title="Add to Playlist"
+        title="افزودن به پلی‌لیست"
         subtitle={
           songIds.length > 1
-            ? `${songIds.length} songs selected`
+            ? `${formatNumber(songIds.length)} آهنگ انتخاب شده`
             : undefined
         }
         options={options}
@@ -99,12 +98,12 @@ export function AddToPlaylistSheet({
       <AppModal
         visible={createModalVisible}
         onClose={() => setCreateModalVisible(false)}
-        title="New Playlist"
+        title="پلی‌لیست جدید"
       >
         <TextInput
           value={newPlaylistName}
           onChangeText={setNewPlaylistName}
-          placeholder="Playlist name"
+          placeholder="نام پلی‌لیست را وارد کنید"
           placeholderTextColor={Colors.textMuted}
           style={styles.input}
           autoFocus
@@ -112,16 +111,17 @@ export function AddToPlaylistSheet({
           selectionColor={Colors.accent}
           returnKeyType="done"
           onSubmitEditing={handleCreateAndAdd}
+          textAlign="right"
         />
         <View style={styles.modalActions}>
           <Pressable
             onPress={() => setCreateModalVisible(false)}
             style={styles.cancelBtn}
           >
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>انصراف</Text>
           </Pressable>
           <PrimaryButton
-            label="Create & Add"
+            label="ساخت و افزودن"
             size="sm"
             onPress={handleCreateAndAdd}
           />
@@ -145,11 +145,14 @@ const styles = StyleSheet.create({
     borderRadius: Radii.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: 12,
+    fontFamily: Fonts.regular,
     color: Colors.textPrimary,
-    fontSize: 15,
+    fontSize: 14,
     borderWidth: 1,
     borderColor: Colors.border,
     marginBottom: Spacing.lg,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   modalActions: {
     flexDirection: 'row',
@@ -162,8 +165,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   cancelText: {
+    fontFamily: Fonts.medium,
     color: Colors.textSecondary,
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13.5,
   },
 });

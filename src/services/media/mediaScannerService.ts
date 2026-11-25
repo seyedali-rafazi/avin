@@ -58,7 +58,7 @@ export const mediaScannerService = {
         added: 0,
         updated: 0,
         removed: 0,
-        error: 'Automatic device scanning requires Android or iOS. Use Import Files to add audio.',
+        error: 'اسکن خودکار حافظه فقط در اندروید و iOS در دسترس است. برای افزودن موسیقی از گزینه «افزودن فایل» استفاده کنید.',
       };
     }
 
@@ -71,7 +71,7 @@ export const mediaScannerService = {
           added: 0,
           updated: 0,
           removed: 0,
-          error: 'Audio library permission was denied. Enable storage access in device settings.',
+          error: 'مجوز دسترسی به فایل‌های صوتی رد شد. لطفاً دسترسی حافظه را از تنظیمات گوشی فعال کنید.',
         };
       }
 
@@ -185,7 +185,7 @@ export const mediaScannerService = {
       };
     } catch (err) {
       const rawMessage =
-        err instanceof Error ? err.message : 'Failed to scan device audio library.';
+        err instanceof Error ? err.message : 'خطا در اسکن کتابخانه صوتی دستگاه.';
       const isMissingManifestPermission =
         rawMessage.includes('not declared in AndroidManifest') ||
         rawMessage.includes('AUDIO permission');
@@ -199,7 +199,7 @@ export const mediaScannerService = {
           updated: 0,
           removed: 0,
           error:
-            'Automatic full-device scanning requires an Expo Development Build (Expo Go on Android does not include the READ_MEDIA_AUDIO permission). Use "Import Files" to add local music right now.',
+            'اسکن خودکار کل دستگاه نیازمند نسخه نصبی (Development Build) است. در حال حاضر می‌توانید از گزینه «افزودن فایل» برای وارد کردن موسیقی استفاده کنید.',
         };
       }
 
@@ -231,7 +231,7 @@ export const mediaScannerService = {
             album: parsed.album,
             albumId: stableId('alb', parsed.album),
             genre: parsed.genre,
-            folder: 'Imported',
+            folder: 'واردشده',
             duration: 0,
             fileUri: entry.uri,
             artworkUri: null,
@@ -299,7 +299,7 @@ export const mediaScannerService = {
     } catch (err) {
       return {
         added: 0,
-        error: err instanceof Error ? err.message : 'Unable to import audio files.',
+        error: err instanceof Error ? err.message : 'امکان وارد کردن فایل‌های صوتی وجود نداشت.',
       };
     }
   },

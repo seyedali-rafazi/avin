@@ -14,7 +14,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import {
   ChevronDown,
-  ChevronLeft,
   Heart,
   ListMusic,
   MoreVertical,
@@ -34,8 +33,13 @@ import {
 } from '@/components';
 import { PLAYBACK_SPEEDS } from '@/constants/audio';
 import { useLibraryStore, usePlayerStore } from '@/stores';
-import { Colors, Layout, Radii, Spacing, Typography } from '@/theme';
-import { formatSpeedLabel } from '@/utils/format';
+import { Colors, Fonts, Layout, Radii, Spacing, Typography } from '@/theme';
+import {
+  formatNumber,
+  formatSpeedLabel,
+  isUnknownAlbum,
+  localizeMetadata,
+} from '@/utils/format';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ARTWORK_SIZE = Math.min(SCREEN_WIDTH - 48, 336);
@@ -89,38 +93,42 @@ export default function NowPlayingScreen() {
       <ScreenContainer edges={['top', 'bottom']}>
         <View style={styles.topBar}>
           <IconButton
-            icon={<ChevronLeft size={26} color={Colors.textPrimary} />}
+            icon={<ChevronDown size={26} color={Colors.textPrimary} />}
             onPress={() => router.back()}
-            accessibilityLabel="Close player"
+            accessibilityLabel="بستن پخش‌کننده"
           />
         </View>
         <View style={styles.emptyCenter}>
-          <Text style={Typography.sectionTitle}>Nothing Playing</Text>
-          <Text style={styles.emptySub}>Select a track from your library to start listening.</Text>
+          <Text style={Typography.sectionTitle}>آهنگی در حال پخش نیست</Text>
+          <Text style={styles.emptySub}>
+            برای شروع گوش دادن، یک آهنگ از کتابخانه انتخاب کنید.
+          </Text>
         </View>
       </ScreenContainer>
     );
   }
 
-  const subtitle =
-    currentSong.album && currentSong.album !== 'Unknown Album'
-      ? `${currentSong.artist} • ${currentSong.album}`
-      : currentSong.artist;
+  const artistName = localizeMetadata(currentSong.artist, 'هنرمند ناشناس');
+  const albumName = localizeMetadata(currentSong.album, 'آلبوم ناشناس');
+  const subtitle = !isUnknownAlbum(currentSong.album)
+    ? `${artistName} • ${albumName}`
+    : artistName;
 
   return (
     <ScreenContainer edges={['top', 'bottom']}>
       <View style={styles.container}>
-        {/* Top Navigation Row matching Reference Screen #3 */}
+        {/* Top Navigation Row */}
         <View style={styles.topBar}>
           <IconButton
-            icon={<ChevronLeft size={26} color={Colors.textPrimary} />}
+            icon={<ChevronDown size={26} color={Colors.textPrimary} />}
             onPress={() => router.back()}
-            accessibilityLabel="Back"
+            accessibilityLabel="بازگشت"
           />
+          <Text style={styles.nowPlayingBadge}>در حال پخش</Text>
           <IconButton
             icon={<MoreVertical size={22} color={Colors.textPrimary} />}
             onPress={() => setOptionsVisible(true)}
-            accessibilityLabel="More track options"
+            accessibilityLabel="گزینه‌های بیشتر آهنگ"
           />
         </View>
 
@@ -165,7 +173,9 @@ export default function NowPlayingScreen() {
                 />
               }
               onPress={() => toggleFavorite(currentSong.id)}
-              accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              accessibilityLabel={
+                isFavorite ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'
+              }
             />
           </View>
 
@@ -199,27 +209,27 @@ export default function NowPlayingScreen() {
               onPress={() => setSpeedSheetVisible(true)}
               style={({ pressed }) => [styles.speedPill, pressed && styles.pressed]}
               accessibilityRole="button"
-              accessibilityLabel={`Playback speed ${formatSpeedLabel(playbackRate)}`}
+              accessibilityLabel={`سرعت پخش ${formatSpeedLabel(playbackRate)}`}
             >
               <Text style={styles.speedText}>{formatSpeedLabel(playbackRate)}</Text>
               <ChevronDown size={14} color={Colors.textSecondary} />
             </Pressable>
 
-            <View style={styles.secondaryRight}>
+            <View style={styles.secondaryEnd}>
               <IconButton
                 icon={<ListMusic size={21} color={Colors.textPrimary} />}
                 onPress={() => router.push('/queue')}
-                accessibilityLabel="Open Up Next queue"
+                accessibilityLabel="باز کردن صف پخش"
               />
               <IconButton
                 icon={<SlidersHorizontal size={20} color={Colors.textPrimary} />}
                 onPress={() => setAudioSheetVisible(true)}
-                accessibilityLabel="Audio and volume controls"
+                accessibilityLabel="تنظیمات صدا"
               />
             </View>
           </View>
 
-          {/* Subtle Purple Bottom Waveform Visualizer matching Reference Screen #3 */}
+          {/* Subtle Purple Bottom Waveform Visualizer */}
           <View style={styles.visualizerWrap}>
             <WaveformVisualizer isPlaying={isPlaying} />
           </View>
@@ -230,9 +240,9 @@ export default function NowPlayingScreen() {
       <BottomSheet
         visible={speedSheetVisible}
         onClose={() => setSpeedSheetVisible(false)}
-        title="Playback Speed"
+        title="سرعت پخش"
         options={PLAYBACK_SPEEDS.map((rate) => ({
-          label: `${formatSpeedLabel(rate)}${rate === 1.0 ? ' (Normal)' : ''}`,
+          label: `${formatSpeedLabel(rate)}${rate === 1.0 ? ' (عادی)' : ''}`,
           selected: playbackRate === rate,
           onPress: () => setPlaybackRate(rate),
         }))}
@@ -242,35 +252,35 @@ export default function NowPlayingScreen() {
       <BottomSheet
         visible={audioSheetVisible}
         onClose={() => setAudioSheetVisible(false)}
-        title="Audio Output"
-        subtitle={`Volume: ${Math.round(volume * 100)}%`}
+        title="خروجی صدا"
+        subtitle={`بلندی صدا: ${formatNumber(Math.round(volume * 100))}٪`}
         options={[
           {
-            label: 'Volume 100%',
+            label: 'بلندی صدا ۱۰۰٪',
             icon: <Volume2 size={18} color={Colors.accentSecondary} />,
             selected: volume >= 0.95,
             onPress: () => setVolume(1.0),
           },
           {
-            label: 'Volume 75%',
+            label: 'بلندی صدا ۷۵٪',
             icon: <Volume2 size={18} color={Colors.textPrimary} />,
             selected: volume >= 0.65 && volume < 0.95,
             onPress: () => setVolume(0.75),
           },
           {
-            label: 'Volume 50%',
+            label: 'بلندی صدا ۵۰٪',
             icon: <Volume2 size={18} color={Colors.textPrimary} />,
             selected: volume >= 0.4 && volume < 0.65,
             onPress: () => setVolume(0.5),
           },
           {
-            label: 'Volume 25%',
+            label: 'بلندی صدا ۲۵٪',
             icon: <Volume2 size={18} color={Colors.textPrimary} />,
             selected: volume > 0 && volume < 0.4,
             onPress: () => setVolume(0.25),
           },
           {
-            label: 'Mute',
+            label: 'بی‌صدا',
             icon: <VolumeX size={18} color={Colors.textSecondary} />,
             selected: volume === 0,
             onPress: () => setVolume(0),
@@ -299,6 +309,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: Spacing.xs,
   },
+  nowPlayingBadge: {
+    fontFamily: Fonts.medium,
+    fontSize: 12.5,
+    lineHeight: 20,
+    color: Colors.textSecondary,
+  },
   errorBanner: {
     backgroundColor: Colors.dangerMuted,
     borderRadius: Radii.md,
@@ -308,8 +324,10 @@ const styles = StyleSheet.create({
     borderColor: Colors.danger,
   },
   errorText: {
+    fontFamily: Fonts.regular,
     color: Colors.danger,
     fontSize: 12,
+    lineHeight: 19,
     textAlign: 'center',
   },
   artworkStage: {
@@ -338,11 +356,16 @@ const styles = StyleSheet.create({
   },
   trackMeta: {
     flex: 1,
+    alignItems: 'flex-start',
   },
   artistText: {
-    fontSize: 15,
+    fontFamily: Fonts.regular,
+    fontSize: 13.5,
+    lineHeight: 22,
     color: Colors.textSecondary,
-    marginTop: 4,
+    marginTop: 2,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   progressWrap: {
     marginBottom: Spacing.lg,
@@ -361,16 +384,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.surfaceElevated,
     borderRadius: Radii.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.border,
     paddingHorizontal: 14,
-    paddingVertical: 7,
-    gap: 4,
+    paddingVertical: 6,
+    gap: 5,
   },
   speedText: {
+    fontFamily: Fonts.semiBold,
     color: Colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12.5,
+    lineHeight: 19,
   },
-  secondaryRight: {
+  secondaryEnd: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,

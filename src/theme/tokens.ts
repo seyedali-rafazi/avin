@@ -1,6 +1,7 @@
 /**
- * Design system tokens extracted directly from the 8 UI reference screens.
- * Deep pure black backgrounds, dark charcoal cards, and vibrant neon purple accents.
+ * Design system tokens for Avin (آوین) Persian RTL Music Player.
+ * Deep pure black backgrounds, dark charcoal cards, vibrant neon purple accents,
+ * and Vazirmatn typography tuned for crisp Persian rendering.
  */
 export const Colors = {
   // Core Backgrounds
@@ -47,70 +48,107 @@ export const Colors = {
   tabBarBackground: '#09090C',
 } as const;
 
+export const Fonts = {
+  regular: 'Vazirmatn_400Regular',
+  medium: 'Vazirmatn_500Medium',
+  semiBold: 'Vazirmatn_600SemiBold',
+  bold: 'Vazirmatn_700Bold',
+  extraBold: 'Vazirmatn_800ExtraBold',
+} as const;
+
 export const Typography = {
   screenTitle: {
-    fontSize: 26,
-    fontWeight: '700' as const,
-    letterSpacing: -0.4,
+    fontFamily: Fonts.bold,
+    fontSize: 24,
+    lineHeight: 36,
     color: Colors.textPrimary,
+    textAlign: 'right' as const,
+    writingDirection: 'rtl' as const,
   },
   greeting: {
-    fontSize: 22,
-    fontWeight: '700' as const,
-    letterSpacing: -0.3,
+    fontFamily: Fonts.bold,
+    fontSize: 20,
+    lineHeight: 32,
     color: Colors.textPrimary,
+    textAlign: 'right' as const,
+    writingDirection: 'rtl' as const,
   },
   playerTitle: {
-    fontSize: 22,
-    fontWeight: '700' as const,
-    letterSpacing: -0.3,
+    fontFamily: Fonts.bold,
+    fontSize: 21,
+    lineHeight: 32,
     color: Colors.textPrimary,
+    textAlign: 'right' as const,
+    writingDirection: 'rtl' as const,
   },
   heroTitle: {
-    fontSize: 20,
-    fontWeight: '700' as const,
-    letterSpacing: -0.2,
+    fontFamily: Fonts.bold,
+    fontSize: 19,
+    lineHeight: 30,
     color: Colors.textPrimary,
+    textAlign: 'right' as const,
+    writingDirection: 'rtl' as const,
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600' as const,
-    letterSpacing: -0.2,
+    fontFamily: Fonts.bold,
+    fontSize: 16,
+    lineHeight: 26,
     color: Colors.textPrimary,
+    textAlign: 'right' as const,
+    writingDirection: 'rtl' as const,
   },
   cardTitle: {
-    fontSize: 15,
-    fontWeight: '600' as const,
+    fontFamily: Fonts.semiBold,
+    fontSize: 14,
+    lineHeight: 22,
     color: Colors.textPrimary,
+    textAlign: 'right' as const,
+    writingDirection: 'rtl' as const,
   },
   rowTitle: {
-    fontSize: 15,
-    fontWeight: '500' as const,
+    fontFamily: Fonts.medium,
+    fontSize: 14,
+    lineHeight: 22,
     color: Colors.textPrimary,
+    textAlign: 'right' as const,
+    writingDirection: 'rtl' as const,
   },
   body: {
-    fontSize: 14,
-    fontWeight: '400' as const,
+    fontFamily: Fonts.regular,
+    fontSize: 13,
+    lineHeight: 22,
     color: Colors.textSecondary,
+    textAlign: 'right' as const,
+    writingDirection: 'rtl' as const,
   },
   subtitle: {
-    fontSize: 13,
-    fontWeight: '400' as const,
+    fontFamily: Fonts.regular,
+    fontSize: 12,
+    lineHeight: 20,
     color: Colors.textSecondary,
+    textAlign: 'right' as const,
+    writingDirection: 'rtl' as const,
   },
   caption: {
-    fontSize: 12,
-    fontWeight: '400' as const,
+    fontFamily: Fonts.regular,
+    fontSize: 11,
+    lineHeight: 18,
     color: Colors.textMuted,
+    textAlign: 'right' as const,
+    writingDirection: 'rtl' as const,
   },
   micro: {
+    fontFamily: Fonts.medium,
     fontSize: 11,
-    fontWeight: '500' as const,
+    lineHeight: 17,
     color: Colors.textMuted,
+    textAlign: 'right' as const,
+    writingDirection: 'rtl' as const,
   },
   tabLabel: {
-    fontSize: 10,
-    fontWeight: '500' as const,
+    fontFamily: Fonts.medium,
+    fontSize: 10.5,
+    lineHeight: 16,
   },
 } as const;
 
@@ -145,10 +183,10 @@ export const IconSizes = {
 
 export const Layout = {
   screenPadding: 16,
-  miniPlayerHeight: 62,
-  tabBarHeight: 60,
+  miniPlayerHeight: 64,
+  tabBarHeight: 64,
   playButtonSize: 66,
   songRowArtwork: 48,
-  miniPlayerArtwork: 42,
-  horizontalCardWidth: 112,
+  miniPlayerArtwork: 44,
+  horizontalCardWidth: 116,
 } as const;

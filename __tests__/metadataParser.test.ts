@@ -18,7 +18,7 @@ describe('audioMetadataParser', () => {
     expect(extractFolderFromUri('file:///storage/emulated/0/Music/Synthwave/track.mp3')).toBe(
       'Music/Synthwave'
     );
-    expect(extractFolderFromUri('track.mp3')).toBe('Device Storage');
+    expect(extractFolderFromUri('track.mp3')).toBe('حافظه دستگاه');
   });
 
   test('parses artist and title from filename with track number', () => {
@@ -36,25 +36,25 @@ describe('audioMetadataParser', () => {
       'ambient_demo.wav',
       'file:///storage/emulated/0/Downloads/ambient_demo.wav'
     );
-    expect(parsed.artist).toBe('Unknown Artist');
+    expect(parsed.artist).toBe('هنرمند ناشناس');
     expect(parsed.title).toBe('ambient demo');
-    expect(parsed.album).toBe('Unknown Album');
+    expect(parsed.album).toBe('آلبوم ناشناس');
   });
 });
 
 describe('format utilities', () => {
-  test('formats durations cleanly', () => {
-    expect(formatDuration(0)).toBe('0:00');
-    expect(formatDuration(84)).toBe('1:24');
-    expect(formatDuration(3665)).toBe('1:01:05');
-    expect(formatDuration(-5)).toBe('0:00');
+  test('formats durations cleanly in Persian digits', () => {
+    expect(formatDuration(0)).toBe('۰:۰۰');
+    expect(formatDuration(84)).toBe('۱:۲۴');
+    expect(formatDuration(3665)).toBe('۱:۰۱:۰۵');
+    expect(formatDuration(-5)).toBe('۰:۰۰');
   });
 
-  test('formats file sizes and playback speeds', () => {
-    expect(formatFileSize(0)).toBe('0 B');
-    expect(formatFileSize(1536)).toBe('1.5 KB');
-    expect(formatFileSize(5 * 1024 * 1024)).toBe('5.0 MB');
-    expect(formatSpeedLabel(1)).toBe('1.0x');
-    expect(formatSpeedLabel(1.25)).toBe('1.25x');
+  test('formats file sizes and playback speeds in Persian', () => {
+    expect(formatFileSize(0)).toBe('۰ بایت');
+    expect(formatFileSize(1536)).toBe('۱.۵ کیلوبایت');
+    expect(formatFileSize(5 * 1024 * 1024)).toBe('۵.۰ مگابایت');
+    expect(formatSpeedLabel(1)).toBe('۱.۰×');
+    expect(formatSpeedLabel(1.25)).toBe('۱.۲۵×');
   });
 });

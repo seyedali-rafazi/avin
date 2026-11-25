@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ChevronRight } from 'lucide-react-native';
-import { Colors, Layout, Spacing, Typography } from '@/theme';
+import { ChevronLeft } from 'lucide-react-native';
+import { Colors, Fonts, Layout, Spacing, Typography } from '@/theme';
 
 interface SectionHeaderProps {
   title: string;
@@ -11,7 +11,7 @@ interface SectionHeaderProps {
 
 export function SectionHeader({
   title,
-  actionLabel = 'See all',
+  actionLabel = 'مشاهده همه',
   onActionPress,
 }: SectionHeaderProps) {
   return (
@@ -24,7 +24,7 @@ export function SectionHeader({
           style={({ pressed }) => [styles.action, pressed && styles.pressed]}
         >
           <Text style={styles.actionText}>{actionLabel}</Text>
-          <ChevronRight size={15} color={Colors.textSecondary} />
+          <ChevronLeft size={15} color={Colors.textSecondary} />
         </Pressable>
       ) : null}
     </View>
@@ -45,9 +45,10 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   actionText: {
-    fontSize: 13,
+    fontFamily: Fonts.medium,
+    fontSize: 12.5,
+    lineHeight: 20,
     color: Colors.textSecondary,
-    fontWeight: '500',
   },
   pressed: {
     opacity: 0.65,
