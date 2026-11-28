@@ -15,7 +15,7 @@ export { RangeSlider } from './ui/RangeSlider';
 export { DraggableSongList } from './ui/DraggableSongList';
 
 export { AlbumArtwork } from './music/AlbumArtwork';
-export { SongRow } from './music/SongRow';
+export { SongRow, SONG_ROW_HEIGHT } from './music/SongRow';
 export { PlaylistCard, CreatePlaylistCard } from './music/PlaylistCard';
 export { ArtistCard } from './music/ArtistCard';
 export { SongOptionsSheet } from './music/SongOptionsSheet';

@@ -197,7 +197,7 @@ export default function PlaylistsScreen() {
 const styles = StyleSheet.create({
   gridContainer: {
     paddingHorizontal: Layout.screenPadding,
-    paddingBottom: Spacing.xxl,
+    paddingBottom: 110,
   },
   grid: {
     flexDirection: 'row',

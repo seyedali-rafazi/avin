@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
-import Animated, { SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import Animated, { Easing, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CheckSquare,
@@ -29,6 +29,28 @@ interface SelectionActionBarProps {
   insideTabScreen?: boolean;
 }
 
+let activeSelectionBars = 0;
+const selectionListeners = new Set<() => void>();
+
+function notifySelectionListeners(): void {
+  for (const listener of selectionListeners) {
+    listener();
+  }
+}
+
+export function useIsSelectionBarActive(): boolean {
+  const [active, setActive] = useState(() => activeSelectionBars > 0);
+  useEffect(() => {
+    const sync = () => setActive(activeSelectionBars > 0);
+    selectionListeners.add(sync);
+    sync();
+    return () => {
+      selectionListeners.delete(sync);
+    };
+  }, []);
+  return active;
+}
+
 export function SelectionActionBar({
   selectedSongs,
   allSelected,
@@ -43,8 +65,19 @@ export function SelectionActionBar({
   const deleteSongs = useLibraryStore((s) => s.deleteSongs);
 
   const [playlistSheetVisible, setPlaylistSheetVisible] = useState(false);
+  const isVisible = selectedSongs.length > 0;
 
-  if (selectedSongs.length === 0) return null;
+  useEffect(() => {
+    if (!isVisible) return;
+    activeSelectionBars += 1;
+    notifySelectionListeners();
+    return () => {
+      activeSelectionBars = Math.max(0, activeSelectionBars - 1);
+      notifySelectionListeners();
+    };
+  }, [isVisible]);
+
+  if (!isVisible) return null;
 
   const songIds = selectedSongs.map((s) => s.id);
 
@@ -109,8 +142,8 @@ export function SelectionActionBar({
   return (
     <>
       <Animated.View
-        entering={SlideInDown.springify().damping(22).stiffness(240)}
-        exiting={SlideOutDown.duration(180)}
+        entering={SlideInDown.duration(260).easing(Easing.out(Easing.cubic))}
+        exiting={SlideOutDown.duration(200).easing(Easing.in(Easing.cubic))}
         style={[styles.container, { paddingBottom: bottomPad }]}
       >
         {/* Top Selection Status Strip */}

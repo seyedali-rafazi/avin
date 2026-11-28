@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Music, Play, Shuffle } from 'lucide-react-native';
@@ -61,6 +61,49 @@ export default function LibraryDetailScreen() {
   );
 
   const selection = useSongSelection(songs);
+  const currentSongId = currentSong?.id ?? null;
+
+  const { isSelectionMode, toggleSelect, enterSelection } = selection;
+  const keyExtractor = useCallback((item: Song) => item.id, []);
+  const handleSongPress = useCallback(
+    (song: Song, index: number) => {
+      if (isSelectionMode) {
+        toggleSelect(song.id);
+      } else {
+        void playQueue(songs, index, false);
+      }
+    },
+    [isSelectionMode, toggleSelect, playQueue, songs]
+  );
+  const handleSongLongPress = useCallback(
+    (song: Song) => enterSelection(song.id),
+    [enterSelection]
+  );
+  const handleSongMore = useCallback((song: Song) => setSelectedSong(song), []);
+  const renderSongItem = useCallback(
+    ({ item, index }: { item: Song; index: number }) => (
+      <SongRow
+        song={item}
+        index={index}
+        showAlbum={type !== 'album'}
+        isActive={currentSongId === item.id}
+        selectionMode={selection.isSelectionMode}
+        isSelected={selection.selectedIds.has(item.id)}
+        onPressItem={handleSongPress}
+        onLongPressItem={handleSongLongPress}
+        onMorePressItem={handleSongMore}
+      />
+    ),
+    [
+      type,
+      currentSongId,
+      selection.isSelectionMode,
+      selection.selectedIds,
+      handleSongPress,
+      handleSongLongPress,
+      handleSongMore,
+    ]
+  );
 
   return (
     <ScreenContainer edges={['top', 'bottom']}>
@@ -88,7 +131,12 @@ export default function LibraryDetailScreen() {
       ) : (
         <FlatList
           data={songs}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
+          removeClippedSubviews={false}
+          initialNumToRender={15}
+          maxToRenderPerBatch={12}
+          updateCellsBatchingPeriod={50}
+          windowSize={9}
           ListHeaderComponent={
             <View style={styles.actionsRow}>
               <PrimaryButton
@@ -106,32 +154,12 @@ export default function LibraryDetailScreen() {
               </Pressable>
             </View>
           }
-          renderItem={({ item, index }) => (
-            <SongRow
-              song={item}
-              showAlbum={type !== 'album'}
-              isActive={currentSong?.id === item.id}
-              selectionMode={selection.isSelectionMode}
-              isSelected={selection.selectedIds.has(item.id)}
-              onPress={() => {
-                if (selection.isSelectionMode) {
-                  selection.toggleSelect(item.id);
-                } else {
-                  void playQueue(songs, index, false);
-                }
-              }}
-              onLongPress={() => selection.enterSelection(item.id)}
-              onMorePress={() => setSelectedSong(item)}
-            />
-          )}
-          contentContainerStyle={[
-            styles.listContent,
-            selection.isSelectionMode && styles.listWithSelectionBar,
-          ]}
+          renderItem={renderSongItem}
+          contentContainerStyle={styles.listContent}
         />
       )}
 
-      {!selection.isSelectionMode ? <MiniPlayer /> : null}
+      <MiniPlayer />
 
       <SelectionActionBar
         selectedSongs={selection.selectedSongs}
@@ -193,9 +221,6 @@ const styles = StyleSheet.create({
     opacity: 0.78,
   },
   listContent: {
-    paddingBottom: Spacing.xxl,
-  },
-  listWithSelectionBar: {
     paddingBottom: 150,
   },
 });

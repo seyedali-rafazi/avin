@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
@@ -9,67 +9,102 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ListMusic, Pause, Play } from 'lucide-react-native';
 import { AlbumArtwork } from '@/components/music/AlbumArtwork';
+import { useIsSelectionBarActive } from '@/components/music/SelectionActionBar';
 import { usePlayerStore } from '@/stores';
 import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import { localizeMetadata } from '@/utils/format';
 
 const SWIPE_THRESHOLD = 48;
 
-export function MiniPlayer() {
-  const currentSong = usePlayerStore((s) => s.currentSong);
-  const isPlaying = usePlayerStore((s) => s.isPlaying);
+const MiniPlayerProgressBar = React.memo(function MiniPlayerProgressBar() {
   const position = usePlayerStore((s) => s.position);
   const duration = usePlayerStore((s) => s.duration);
+  const progress =
+    duration > 0 ? Math.min(1, Math.max(0, position / duration)) : 0;
+
+  return (
+    <View style={styles.progressTrack}>
+      <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+    </View>
+  );
+});
+
+interface MiniPlayerProps {
+  /** Float above screen content so mounting never resizes lists or resets scroll position. */
+  floating?: boolean;
+  /** Explicit bottom offset when floating above a tab bar; defaults to safe-area bottom inset. */
+  bottomOffset?: number;
+}
+
+export const MiniPlayer = React.memo(function MiniPlayer({
+  floating = true,
+  bottomOffset,
+}: MiniPlayerProps) {
+  const insets = useSafeAreaInsets();
+  const selectionActive = useIsSelectionBarActive();
+  const currentSong = usePlayerStore((s) => s.currentSong);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause);
   const nextTrack = usePlayerStore((s) => s.nextTrack);
   const previousTrack = usePlayerStore((s) => s.previousTrack);
 
   const translateX = useSharedValue(0);
 
-  const triggerNext = () => {
+  const triggerNext = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     void nextTrack(false);
-  };
+  }, [nextTrack]);
 
-  const triggerPrev = () => {
+  const triggerPrev = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     void previousTrack();
-  };
+  }, [previousTrack]);
 
-  const swipeGesture = Gesture.Pan()
-    .activeOffsetX([-16, 16])
-    .failOffsetY([-12, 12])
-    .onUpdate((e) => {
-      translateX.value = Math.max(-72, Math.min(72, e.translationX));
-    })
-    .onEnd((e) => {
-      if (e.translationX <= -SWIPE_THRESHOLD) {
-        runOnJS(triggerNext)();
-      } else if (e.translationX >= SWIPE_THRESHOLD) {
-        runOnJS(triggerPrev)();
-      }
-      translateX.value = withSpring(0, { damping: 20, stiffness: 240 });
-    })
-    .onFinalize(() => {
-      translateX.value = withSpring(0, { damping: 20, stiffness: 240 });
-    });
+  const swipeGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-16, 16])
+        .failOffsetY([-12, 12])
+        .onUpdate((e) => {
+          translateX.value = Math.max(-72, Math.min(72, e.translationX));
+        })
+        .onEnd((e) => {
+          if (e.translationX <= -SWIPE_THRESHOLD) {
+            runOnJS(triggerNext)();
+          } else if (e.translationX >= SWIPE_THRESHOLD) {
+            runOnJS(triggerPrev)();
+          }
+          translateX.value = withSpring(0, { damping: 20, stiffness: 240 });
+        })
+        .onFinalize(() => {
+          translateX.value = withSpring(0, { damping: 20, stiffness: 240 });
+        }),
+    [translateX, triggerNext, triggerPrev]
+  );
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
 
-  if (!currentSong) {
+  if (!currentSong || selectionActive) {
     return null;
   }
 
-  const progress =
-    duration > 0 ? Math.min(1, Math.max(0, position / duration)) : 0;
   const artistName = localizeMetadata(currentSong.artist, 'هنرمند ناشناس');
+  const resolvedBottom =
+    bottomOffset !== undefined ? bottomOffset : Math.max(insets.bottom, Spacing.xs);
 
   return (
-    <View style={styles.wrapper}>
+    <View
+      pointerEvents="box-none"
+      style={[
+        styles.wrapper,
+        floating && [styles.floatingWrapper, { bottom: resolvedBottom }],
+      ]}
+    >
       <GestureDetector gesture={swipeGesture}>
         <Animated.View style={animatedStyle}>
           <Pressable
@@ -133,23 +168,27 @@ export function MiniPlayer() {
               </View>
             </View>
 
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-            </View>
+            <MiniPlayerProgressBar />
           </Pressable>
         </Animated.View>
       </GestureDetector>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: Colors.background,
+    backgroundColor: 'transparent',
     paddingHorizontal: Spacing.sm,
     paddingBottom: 4,
     paddingTop: 4,
     direction: 'rtl',
+  },
+  floatingWrapper: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 25,
   },
   container: {
     backgroundColor: Colors.surfaceElevated,
@@ -157,6 +196,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.38,
+    shadowRadius: 12,
+    elevation: 10,
   },
   pressed: {
     opacity: 0.92,

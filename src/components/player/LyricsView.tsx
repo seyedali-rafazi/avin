@@ -33,28 +33,32 @@ export function LyricsView({ song, position, onSeek }: LyricsViewProps) {
   const updateSongMetadata = useLibraryStore((s) => s.updateSongMetadata);
   const syncUpdatedSong = usePlayerStore((s) => s.syncUpdatedSong);
 
-  const [loading, setLoading] = useState(true);
-  const [parsed, setParsed] = useState<ParsedLyrics | null>(null);
+  const songKey = `${song.id}:${song.lyrics ?? ''}`;
+  const [loadedState, setLoadedState] = useState<{
+    key: string;
+    parsed: ParsedLyrics | null;
+  } | null>(null);
   const [editorVisible, setEditorVisible] = useState(false);
-  const [draftLyrics, setDraftLyrics] = useState('');
+  const [draftLyrics, setDraftLyrics] = useState(song.lyrics ?? '');
 
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const lastActiveIndexRef = useRef(-1);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     void lyricsService.loadLyricsForSong(song).then((result) => {
       if (!cancelled) {
-        setParsed(result);
+        setLoadedState({ key: songKey, parsed: result });
         setDraftLyrics(result?.raw ?? song.lyrics ?? '');
-        setLoading(false);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [song]);
+  }, [song, songKey]);
+
+  const loading = loadedState?.key !== songKey;
+  const parsed = loadedState?.key === songKey ? loadedState.parsed : null;
 
   const activeIndex =
     parsed && parsed.isSynced ? getActiveLyricIndex(parsed.lines, position) : -1;
@@ -77,7 +81,11 @@ export function LyricsView({ song, position, onSeek }: LyricsViewProps) {
     if (updated) {
       syncUpdatedSong(updated);
     }
-    setParsed(cleaned ? parseLyrics(cleaned) : null);
+    const nextKey = `${song.id}:${cleaned}`;
+    setLoadedState({
+      key: nextKey,
+      parsed: cleaned ? parseLyrics(cleaned) : null,
+    });
     setDraftLyrics(cleaned);
     setEditorVisible(false);
   };

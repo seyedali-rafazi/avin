@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -68,8 +68,9 @@ export default function PlaylistDetailScreen() {
   const [refreshTick, setRefreshTick] = useState(0);
   const songs = useMemo(() => {
     void refreshTick;
-    return id ? getPlaylistSongs(id) : [];
-  }, [id, getPlaylistSongs, playlists, refreshTick]);
+    if (!id || !playlist) return [];
+    return getPlaylistSongs(id);
+  }, [id, playlist, getPlaylistSongs, refreshTick]);
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -81,6 +82,48 @@ export default function PlaylistDetailScreen() {
   const [reorderMode, setReorderMode] = useState(false);
 
   const selection = useSongSelection(songs);
+  const currentSongId = currentSong?.id ?? null;
+
+  const { isSelectionMode, toggleSelect, enterSelection } = selection;
+  const songKeyExtractor = useCallback((item: Song) => item.id, []);
+  const handleSongPress = useCallback(
+    (song: Song, index: number) => {
+      if (isSelectionMode) {
+        toggleSelect(song.id);
+      } else {
+        void playQueue(songs, index, false);
+      }
+    },
+    [isSelectionMode, toggleSelect, playQueue, songs]
+  );
+  const handleSongLongPress = useCallback(
+    (song: Song) => enterSelection(song.id),
+    [enterSelection]
+  );
+  const handleSongMore = useCallback((song: Song) => setSelectedSong(song), []);
+  const renderSongItem = useCallback(
+    ({ item, index }: { item: Song; index: number }) => (
+      <SongRow
+        song={item}
+        index={index}
+        showAlbum
+        isActive={currentSongId === item.id}
+        selectionMode={selection.isSelectionMode}
+        isSelected={selection.selectedIds.has(item.id)}
+        onPressItem={handleSongPress}
+        onLongPressItem={handleSongLongPress}
+        onMorePressItem={handleSongMore}
+      />
+    ),
+    [
+      currentSongId,
+      selection.isSelectionMode,
+      selection.selectedIds,
+      handleSongPress,
+      handleSongLongPress,
+      handleSongMore,
+    ]
+  );
 
   const existingIds = useMemo(() => new Set(songs.map((s) => s.id)), [songs]);
 
@@ -230,7 +273,12 @@ export default function PlaylistDetailScreen() {
       ) : (
         <FlatList
           data={songs}
-          keyExtractor={(item) => item.id}
+          keyExtractor={songKeyExtractor}
+          removeClippedSubviews={false}
+          initialNumToRender={15}
+          maxToRenderPerBatch={12}
+          updateCellsBatchingPeriod={50}
+          windowSize={9}
           ListHeaderComponent={
             <View style={styles.heroHeader}>
               <Pressable onPress={() => void handleChangeArtwork()}>
@@ -260,32 +308,12 @@ export default function PlaylistDetailScreen() {
               </View>
             </View>
           }
-          renderItem={({ item, index }) => (
-            <SongRow
-              song={item}
-              showAlbum
-              isActive={currentSong?.id === item.id}
-              selectionMode={selection.isSelectionMode}
-              isSelected={selection.selectedIds.has(item.id)}
-              onPress={() => {
-                if (selection.isSelectionMode) {
-                  selection.toggleSelect(item.id);
-                } else {
-                  void playQueue(songs, index, false);
-                }
-              }}
-              onLongPress={() => selection.enterSelection(item.id)}
-              onMorePress={() => setSelectedSong(item)}
-            />
-          )}
-          contentContainerStyle={[
-            styles.listContent,
-            selection.isSelectionMode && styles.listWithSelectionBar,
-          ]}
+          renderItem={renderSongItem}
+          contentContainerStyle={styles.listContent}
         />
       )}
 
-      {!selection.isSelectionMode ? <MiniPlayer /> : null}
+      <MiniPlayer />
 
       <SelectionActionBar
         selectedSongs={selection.selectedSongs}
@@ -528,9 +556,6 @@ const styles = StyleSheet.create({
     opacity: 0.78,
   },
   listContent: {
-    paddingBottom: Spacing.xxl,
-  },
-  listWithSelectionBar: {
     paddingBottom: 150,
   },
   pickerSearchWrap: {

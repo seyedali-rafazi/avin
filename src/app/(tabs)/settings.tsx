@@ -473,7 +473,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingBottom: Spacing.xxl,
+    paddingBottom: 110,
   },
   sheetBox: {
     paddingHorizontal: Spacing.lg,

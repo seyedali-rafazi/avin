@@ -1,23 +1,22 @@
-import React, { useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, {
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
 import { Check, MoreVertical } from 'lucide-react-native';
 import { Colors, Fonts, Layout, Radii, Spacing } from '@/theme';
 import type { Song } from '@/types/music';
 import { isUnknownAlbum, localizeMetadata } from '@/utils/format';
 import { AlbumArtwork } from './AlbumArtwork';
 
+export const SONG_ROW_HEIGHT = 64;
+
 interface SongRowProps {
   song: Song;
-  onPress: () => void;
+  index?: number;
+  onPress?: () => void;
   onLongPress?: () => void;
   onMorePress?: () => void;
+  onPressItem?: (song: Song, index: number) => void;
+  onLongPressItem?: (song: Song) => void;
+  onMorePressItem?: (song: Song) => void;
   isActive?: boolean;
   selectionMode?: boolean;
   isSelected?: boolean;
@@ -43,9 +42,13 @@ function renderHighlightedText(text: string, query?: string) {
 
 export const SongRow = React.memo(function SongRow({
   song,
+  index = 0,
   onPress,
   onLongPress,
   onMorePress,
+  onPressItem,
+  onLongPressItem,
+  onMorePressItem,
   isActive = false,
   selectionMode = false,
   isSelected = false,
@@ -53,41 +56,29 @@ export const SongRow = React.memo(function SongRow({
   rightElement,
   highlightQuery,
 }: SongRowProps) {
-  const selectModeAnim = useSharedValue(selectionMode ? 1 : 0);
-  const selectedScale = useSharedValue(1);
-  const checkScale = useSharedValue(isSelected ? 1 : 0);
-
-  useEffect(() => {
-    selectModeAnim.value = withTiming(selectionMode ? 1 : 0, { duration: 220 });
-  }, [selectionMode, selectModeAnim]);
-
-  useEffect(() => {
-    checkScale.value = withSpring(isSelected ? 1 : 0, {
-      damping: 16,
-      stiffness: 260,
-    });
-    if (isSelected) {
-      selectedScale.value = withSpring(0.98, { damping: 14, stiffness: 320 }, () => {
-        selectedScale.value = withSpring(1, { damping: 14, stiffness: 260 });
-      });
+  const handlePress = useCallback(() => {
+    if (onPressItem) {
+      onPressItem(song, index);
+    } else {
+      onPress?.();
     }
-  }, [isSelected, checkScale, selectedScale]);
+  }, [onPressItem, onPress, song, index]);
 
-  const rowAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: selectedScale.value }],
-  }));
+  const handleLongPress = useCallback(() => {
+    if (onLongPressItem) {
+      onLongPressItem(song);
+    } else {
+      onLongPress?.();
+    }
+  }, [onLongPressItem, onLongPress, song]);
 
-  const checkboxWrapStyle = useAnimatedStyle(() => ({
-    width: interpolate(selectModeAnim.value, [0, 1], [0, 26]),
-    marginStart: interpolate(selectModeAnim.value, [0, 1], [0, 2]),
-    opacity: selectModeAnim.value,
-    transform: [{ scale: interpolate(selectModeAnim.value, [0, 1], [0.5, 1]) }],
-  }));
-
-  const checkInnerStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: checkScale.value }],
-    opacity: checkScale.value,
-  }));
+  const handleMorePress = useCallback(() => {
+    if (onMorePressItem) {
+      onMorePressItem(song);
+    } else {
+      onMorePress?.();
+    }
+  }, [onMorePressItem, onMorePress, song]);
 
   const artistName = localizeMetadata(song.artist, 'هنرمند ناشناس');
   const albumName = localizeMetadata(song.album, 'آلبوم ناشناس');
@@ -96,72 +87,74 @@ export const SongRow = React.memo(function SongRow({
       ? `${artistName} • ${albumName}`
       : artistName;
 
+  const hasMoreAction = Boolean(onMorePress || onMorePressItem);
+
   return (
-    <Animated.View style={rowAnimStyle}>
-      <Pressable
-        onPress={onPress}
-        onLongPress={onLongPress}
-        delayLongPress={260}
-        style={({ pressed }) => [
-          styles.container,
-          isActive && !isSelected && styles.activeContainer,
-          isSelected && styles.selectedContainer,
-          pressed && styles.pressed,
-        ]}
-      >
-        <Animated.View style={[styles.checkboxWrap, checkboxWrapStyle]}>
+    <Pressable
+      onPress={handlePress}
+      onLongPress={onLongPress || onLongPressItem ? handleLongPress : undefined}
+      delayLongPress={260}
+      style={({ pressed }) => [
+        styles.container,
+        isActive && !isSelected && styles.activeContainer,
+        isSelected && styles.selectedContainer,
+        pressed && styles.pressed,
+      ]}
+    >
+      {selectionMode ? (
+        <View style={styles.checkboxWrap}>
           <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-            <Animated.View style={checkInnerStyle}>
+            {isSelected ? (
               <Check size={13} color={Colors.textPrimary} strokeWidth={3} />
-            </Animated.View>
+            ) : null}
           </View>
-        </Animated.View>
-
-        <AlbumArtwork
-          uri={song.artworkUri}
-          size={Layout.songRowArtwork}
-          borderRadius={Radii.sm}
-        />
-
-        <View style={styles.info}>
-          <Text
-            style={[
-              styles.title,
-              (isActive || isSelected) && styles.activeTitle,
-            ]}
-            numberOfLines={1}
-          >
-            {renderHighlightedText(song.title, highlightQuery)}
-          </Text>
-          <Text style={styles.subtitle} numberOfLines={1}>
-            {renderHighlightedText(subtitle, highlightQuery)}
-          </Text>
         </View>
+      ) : null}
 
-        {selectionMode ? null : rightElement ? (
-          rightElement
-        ) : onMorePress ? (
-          <Pressable
-            onPress={onMorePress}
-            hitSlop={10}
-            style={({ pressed }) => [styles.moreBtn, pressed && styles.pressedIcon]}
-            accessibilityRole="button"
-            accessibilityLabel={`گزینه‌های بیشتر برای ${song.title}`}
-          >
-            <MoreVertical size={18} color={Colors.textSecondary} />
-          </Pressable>
-        ) : null}
-      </Pressable>
-    </Animated.View>
+      <AlbumArtwork
+        uri={song.artworkUri}
+        size={Layout.songRowArtwork}
+        borderRadius={Radii.sm}
+      />
+
+      <View style={styles.info}>
+        <Text
+          style={[
+            styles.title,
+            (isActive || isSelected) && styles.activeTitle,
+          ]}
+          numberOfLines={1}
+        >
+          {highlightQuery ? renderHighlightedText(song.title, highlightQuery) : song.title}
+        </Text>
+        <Text style={styles.subtitle} numberOfLines={1}>
+          {highlightQuery ? renderHighlightedText(subtitle, highlightQuery) : subtitle}
+        </Text>
+      </View>
+
+      {selectionMode ? null : rightElement ? (
+        rightElement
+      ) : hasMoreAction ? (
+        <Pressable
+          onPress={handleMorePress}
+          hitSlop={10}
+          style={({ pressed }) => [styles.moreBtn, pressed && styles.pressedIcon]}
+          accessibilityRole="button"
+          accessibilityLabel={`گزینه‌های بیشتر برای ${song.title}`}
+        >
+          <MoreVertical size={18} color={Colors.textSecondary} />
+        </Pressable>
+      ) : null}
+    </Pressable>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
+    height: SONG_ROW_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Layout.screenPadding,
-    paddingVertical: 8,
     gap: Spacing.md,
   },
   activeContainer: {
@@ -174,7 +167,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   checkboxWrap: {
-    overflow: 'hidden',
+    width: 24,
+    marginStart: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -2,10 +2,13 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Tabs } from 'expo-router';
 import { Heart, Home, Library, ListMusic, Settings } from 'lucide-react-native';
-import { MiniPlayer } from '@/components/player/MiniPlayer';
 import { Colors, Fonts, Spacing, Typography } from '@/theme';
 
-type TabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>['tabBar']>>[0];
+type BaseTabBarProps = Parameters<NonNullable<React.ComponentProps<typeof Tabs>['tabBar']>>[0];
+
+interface BottomTabBarProps extends BaseTabBarProps {
+  onHeightChange?: (height: number) => void;
+}
 
 const TAB_CONFIG: Record<
   string,
@@ -27,10 +30,18 @@ export function BottomTabBar({
   emitter,
   navigateToTab,
   insets,
-}: TabBarProps) {
+  onHeightChange,
+}: BottomTabBarProps) {
   return (
-    <View style={styles.outer}>
-      <MiniPlayer />
+    <View
+      style={styles.outer}
+      onLayout={(e) => {
+        const h = Math.round(e.nativeEvent.layout.height);
+        if (h > 0) {
+          onHeightChange?.(h);
+        }
+      }}
+    >
       <View
         style={[
           styles.tabBar,
@@ -75,7 +86,7 @@ export function BottomTabBar({
               onLongPress={onLongPress}
               style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]}
             >
-              <View style={[styles.iconPill, isFocused && styles.iconPillActive]}>
+              <View style={styles.iconPill}>
                 <IconComponent
                   size={20}
                   color={color}
@@ -122,9 +133,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconPillActive: {
-    backgroundColor: Colors.accentMuted,
   },
   pressed: {
     opacity: 0.7,

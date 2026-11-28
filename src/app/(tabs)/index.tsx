@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -70,16 +70,66 @@ export default function HomeScreen() {
   );
 
   const selection = useSongSelection(allSongsByDate);
+  const currentSongId = currentSong?.id ?? null;
 
-  const handleShuffleAll = () => {
-    if (songs.length === 0) {
-      void handleScan();
-      return;
+  const keyExtractor = useCallback((item: Song) => item.id, []);
+
+  const { isSelectionMode, toggleSelect, enterSelection } = selection;
+
+  const handleSongPress = useCallback(
+    (song: Song, index: number) => {
+      if (isSelectionMode) {
+        toggleSelect(song.id);
+      } else {
+        void playQueue(allSongsByDate, index, false);
+      }
+    },
+    [isSelectionMode, toggleSelect, playQueue, allSongsByDate]
+  );
+
+  const handleSongLongPress = useCallback(
+    (song: Song) => {
+      enterSelection(song.id);
+    },
+    [enterSelection]
+  );
+
+  const handleSongMore = useCallback((song: Song) => {
+    setSelectedSong(song);
+  }, []);
+
+  const renderSongItem = useCallback(
+    ({ item, index }: { item: Song; index: number }) => (
+      <SongRow
+        song={item}
+        index={index}
+        showAlbum
+        isActive={currentSongId === item.id}
+        selectionMode={selection.isSelectionMode}
+        isSelected={selection.selectedIds.has(item.id)}
+        onPressItem={handleSongPress}
+        onLongPressItem={handleSongLongPress}
+        onMorePressItem={handleSongMore}
+      />
+    ),
+    [
+      currentSongId,
+      selection.isSelectionMode,
+      selection.selectedIds,
+      handleSongPress,
+      handleSongLongPress,
+      handleSongMore,
+    ]
+  );
+
+  const handleImport = useCallback(async () => {
+    const res = await importFiles();
+    if (res.error) {
+      Alert.alert('خطا در افزودن فایل', res.error);
     }
-    void playQueue(songs, 0, true);
-  };
+  }, [importFiles]);
 
-  const handleScan = async () => {
+  const handleScan = useCallback(async () => {
     const res = await scanDevice();
     if (res.requiresDevBuild) {
       Alert.alert(
@@ -102,16 +152,18 @@ export default function HomeScreen() {
         ]
       );
     }
-  };
+  }, [scanDevice, handleImport]);
 
-  const handleImport = async () => {
-    const res = await importFiles();
-    if (res.error) {
-      Alert.alert('خطا در افزودن فایل', res.error);
+  const handleShuffleAll = useCallback(() => {
+    if (songs.length === 0) {
+      void handleScan();
+      return;
     }
-  };
+    void playQueue(songs, 0, true);
+  }, [songs, handleScan, playQueue]);
 
-  const listHeader = (
+  const listHeader = useMemo(
+    () => (
     <>
       {/* Clean Branded App Header */}
       <View style={styles.header}>
@@ -322,40 +374,37 @@ export default function HomeScreen() {
         </>
       )}
     </>
+    ),
+    [
+      isScanning,
+      scanProgress,
+      songs.length,
+      handleScan,
+      handleShuffleAll,
+      handleImport,
+      recentPlayedPreview,
+      playQueue,
+      favoriteSongs.length,
+      playlists,
+      allSongsByDate.length,
+      dateOrder,
+    ]
   );
 
   return (
     <ScreenContainer>
       <FlatList
         data={songs.length > 0 ? allSongsByDate : []}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         ListHeaderComponent={listHeader}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={false}
         initialNumToRender={15}
-        maxToRenderPerBatch={15}
+        maxToRenderPerBatch={12}
+        updateCellsBatchingPeriod={50}
         windowSize={9}
-        contentContainerStyle={[
-          styles.scrollContent,
-          selection.isSelectionMode && styles.scrollWithSelectionBar,
-        ]}
-        renderItem={({ item, index }) => (
-          <SongRow
-            song={item}
-            showAlbum
-            isActive={currentSong?.id === item.id}
-            selectionMode={selection.isSelectionMode}
-            isSelected={selection.selectedIds.has(item.id)}
-            onPress={() => {
-              if (selection.isSelectionMode) {
-                selection.toggleSelect(item.id);
-              } else {
-                void playQueue(allSongsByDate, index, false);
-              }
-            }}
-            onLongPress={() => selection.enterSelection(item.id)}
-            onMorePress={() => setSelectedSong(item)}
-          />
-        )}
+        contentContainerStyle={styles.scrollContent}
+        renderItem={renderSongItem}
       />
 
       <SelectionActionBar
@@ -379,9 +428,6 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingBottom: Spacing.xxl,
-  },
-  scrollWithSelectionBar: {
     paddingBottom: 140,
   },
   header: {

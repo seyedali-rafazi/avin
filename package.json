@@ -53,7 +53,9 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "build:apk:arm64": "npx eas-cli@latest build --platform android --profile production-apk",
+    "build:apk:arm64:local": "npx eas-cli@latest build --platform android --profile production-apk --local --output ./avin-arm64.apk"
   },
   "private": true
 }

@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,7 @@ import {
   ScreenContainer,
   ScreenHeader,
   SearchBar,
+  SONG_ROW_HEIGHT,
   SongOptionsSheet,
   SongRow,
 } from '@/components';
@@ -91,6 +93,38 @@ export default function SearchScreen() {
   const genreResults = useMemo(
     () => (lower ? genres.filter((g) => g.name.toLowerCase().includes(lower)) : []),
     [genres, lower]
+  );
+
+  const songKeyExtractor = useCallback((item: Song) => item.id, []);
+  const songItemLayout = useCallback(
+    (_: ArrayLike<Song> | null | undefined, index: number) => ({
+      length: SONG_ROW_HEIGHT,
+      offset: SONG_ROW_HEIGHT * index,
+      index,
+    }),
+    []
+  );
+  const handleSongPress = useCallback(
+    (_song: Song, index: number) => {
+      saveToHistory(debouncedQuery);
+      void playQueue(songResults, index, false);
+    },
+    [saveToHistory, debouncedQuery, playQueue, songResults]
+  );
+  const handleSongMore = useCallback((song: Song) => setSelectedSong(song), []);
+  const currentSongId = currentSong?.id ?? null;
+  const renderSongResult = useCallback(
+    ({ item, index }: { item: Song; index: number }) => (
+      <SongRow
+        song={item}
+        index={index}
+        isActive={currentSongId === item.id}
+        highlightQuery={debouncedQuery}
+        onPressItem={handleSongPress}
+        onMorePressItem={handleSongMore}
+      />
+    ),
+    [currentSongId, debouncedQuery, handleSongPress, handleSongMore]
   );
 
   const handleSubmit = () => {
@@ -186,19 +220,14 @@ export default function SearchScreen() {
           ) : (
             <FlatList
               data={songResults}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item, index }) => (
-                <SongRow
-                  song={item}
-                  isActive={currentSong?.id === item.id}
-                  highlightQuery={debouncedQuery}
-                  onPress={() => {
-                    saveToHistory(debouncedQuery);
-                    void playQueue(songResults, index, false);
-                  }}
-                  onMorePress={() => setSelectedSong(item)}
-                />
-              )}
+              keyExtractor={songKeyExtractor}
+              getItemLayout={songItemLayout}
+              removeClippedSubviews={Platform.OS === 'android'}
+              initialNumToRender={12}
+              maxToRenderPerBatch={10}
+              updateCellsBatchingPeriod={50}
+              windowSize={5}
+              renderItem={renderSongResult}
               contentContainerStyle={styles.listPadding}
             />
           )
@@ -391,7 +420,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listPadding: {
-    paddingBottom: Spacing.xl,
+    paddingBottom: 110,
   },
   historyContainer: {
     paddingHorizontal: Layout.screenPadding,

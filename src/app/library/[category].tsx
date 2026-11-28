@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
@@ -99,6 +99,48 @@ export default function LibraryCategoryScreen() {
   ]);
 
   const selection = useSongSelection(activeSongList);
+  const currentSongId = currentSong?.id ?? null;
+
+  const { isSelectionMode, toggleSelect, enterSelection } = selection;
+  const songKeyExtractor = useCallback((item: Song) => item.id, []);
+  const handleSongPress = useCallback(
+    (song: Song, index: number) => {
+      if (isSelectionMode) {
+        toggleSelect(song.id);
+      } else {
+        void playQueue(activeSongList, index, false);
+      }
+    },
+    [isSelectionMode, toggleSelect, playQueue, activeSongList]
+  );
+  const handleSongLongPress = useCallback(
+    (song: Song) => enterSelection(song.id),
+    [enterSelection]
+  );
+  const handleSongMore = useCallback((song: Song) => setSelectedSong(song), []);
+  const renderSongItem = useCallback(
+    ({ item, index }: { item: Song; index: number }) => (
+      <SongRow
+        song={item}
+        index={index}
+        showAlbum
+        isActive={currentSongId === item.id}
+        selectionMode={selection.isSelectionMode}
+        isSelected={selection.selectedIds.has(item.id)}
+        onPressItem={handleSongPress}
+        onLongPressItem={handleSongLongPress}
+        onMorePressItem={handleSongMore}
+      />
+    ),
+    [
+      currentSongId,
+      selection.isSelectionMode,
+      selection.selectedIds,
+      handleSongPress,
+      handleSongLongPress,
+      handleSongMore,
+    ]
+  );
 
   const activeSortBy = activeCategory === 'recently-added' ? recentSortBy : sortBy;
   const activeSortOrder =
@@ -133,7 +175,7 @@ export default function LibraryCategoryScreen() {
     return (
       <FlatList
         data={list}
-        keyExtractor={(item) => item.id}
+        keyExtractor={songKeyExtractor}
         ListHeaderComponent={
           <View style={styles.actionsRow}>
             <PrimaryButton
@@ -151,31 +193,13 @@ export default function LibraryCategoryScreen() {
             </Pressable>
           </View>
         }
-        renderItem={({ item, index }) => (
-          <SongRow
-            song={item}
-            showAlbum
-            isActive={currentSong?.id === item.id}
-            selectionMode={selection.isSelectionMode}
-            isSelected={selection.selectedIds.has(item.id)}
-            onPress={() => {
-              if (selection.isSelectionMode) {
-                selection.toggleSelect(item.id);
-              } else {
-                void playQueue(list, index, false);
-              }
-            }}
-            onLongPress={() => selection.enterSelection(item.id)}
-            onMorePress={() => setSelectedSong(item)}
-          />
-        )}
-        initialNumToRender={18}
-        maxToRenderPerBatch={24}
-        windowSize={11}
-        contentContainerStyle={[
-          styles.listContent,
-          selection.isSelectionMode && styles.listWithSelectionBar,
-        ]}
+        renderItem={renderSongItem}
+        removeClippedSubviews={false}
+        initialNumToRender={15}
+        maxToRenderPerBatch={12}
+        updateCellsBatchingPeriod={50}
+        windowSize={9}
+        contentContainerStyle={styles.listContent}
       />
     );
   };
@@ -356,7 +380,7 @@ export default function LibraryCategoryScreen() {
           ))}
       </View>
 
-      {!selection.isSelectionMode ? <MiniPlayer /> : null}
+      <MiniPlayer />
 
       <SelectionActionBar
         selectedSongs={selection.selectedSongs}
@@ -418,14 +442,11 @@ const styles = StyleSheet.create({
     opacity: 0.78,
   },
   listContent: {
-    paddingBottom: Spacing.xxl,
-  },
-  listWithSelectionBar: {
     paddingBottom: 150,
   },
   albumGrid: {
     paddingHorizontal: Layout.screenPadding,
-    paddingBottom: Spacing.xxl,
+    paddingBottom: 110,
     gap: Spacing.lg,
   },
   albumRow: {

@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BackHandler } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import type { Song } from '@/types/music';
 
@@ -6,6 +7,20 @@ export function useSongSelection(songs: Song[]) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const isSelectionMode = selectedIds.size > 0;
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  // Pressing the Android hardware back button exits selection mode instead of leaving the screen/app
+  useEffect(() => {
+    if (!isSelectionMode) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      clearSelection();
+      return true;
+    });
+    return () => sub.remove();
+  }, [isSelectionMode, clearSelection]);
 
   const enterSelection = useCallback((songId: string) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -33,10 +48,6 @@ export function useSongSelection(songs: Song[]) {
     void Haptics.selectionAsync();
     setSelectedIds(new Set(songs.map((s) => s.id)));
   }, [songs]);
-
-  const clearSelection = useCallback(() => {
-    setSelectedIds(new Set());
-  }, []);
 
   const selectedSongs = useMemo(
     () => songs.filter((s) => selectedIds.has(s.id)),

@@ -1,8 +1,15 @@
 jest.mock('@/services/audio/audioEngine', () => ({
   audioEngine: {
     setCallbacks: jest.fn(),
+    warmUp: jest.fn(),
+    hydrateQueue: jest.fn(),
+    setQueueAndPlay: jest.fn().mockResolvedValue(undefined),
+    skipToIndex: jest.fn().mockResolvedValue(undefined),
     loadAndPlay: jest.fn().mockResolvedValue(undefined),
-    crossfadeTo: jest.fn().mockResolvedValue(undefined),
+    addSongToQueue: jest.fn(),
+    insertSongInQueue: jest.fn(),
+    removeSongFromQueue: jest.fn(),
+    syncQueueOrder: jest.fn(),
     preloadNextTrack: jest.fn().mockResolvedValue(undefined),
     play: jest.fn(),
     pause: jest.fn(),
@@ -12,6 +19,7 @@ jest.mock('@/services/audio/audioEngine', () => ({
     setVolume: jest.fn(),
     setFadeMultiplier: jest.fn(),
     setEqGainMultiplier: jest.fn(),
+    setRepeatMode: jest.fn(),
     setLoopCurrent: jest.fn(),
     setGaplessPlayback: jest.fn(),
     setCrossfadeSeconds: jest.fn(),
@@ -120,7 +128,7 @@ describe('usePlayerStore', () => {
     const state = usePlayerStore.getState();
     expect(state.currentIndex).toBe(1);
     expect(state.currentSong?.id).toBe('s2');
-    expect(audioEngine.loadAndPlay).toHaveBeenCalledWith(mockSongs[1], true);
+    expect(audioEngine.setQueueAndPlay).toHaveBeenCalledWith(mockSongs, 1, true);
   });
 
   test('advances to next track and wraps on repeat all', async () => {

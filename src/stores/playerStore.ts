@@ -61,14 +61,6 @@ interface PlayerState {
 
 let lastPersistTs = 0;
 
-function preloadUpcomingTrack(state: Pick<PlayerState, 'queue' | 'currentIndex' | 'repeatMode'>): void {
-  const { settings } = useSettingsStore.getState();
-  if (!settings.gaplessPlayback) return;
-  const nextIdx = getNextIndex(state.currentIndex, state.queue.length, state.repeatMode, true);
-  const nextSong = nextIdx !== null ? state.queue[nextIdx] ?? null : null;
-  void audioEngine.preloadNextTrack(nextSong);
-}
-
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   queue: [],
   originalQueue: [],
@@ -181,9 +173,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     audioEngine.setPlaybackRate(restoredRate);
     audioEngine.setVolume(restoredVolume);
-    audioEngine.setLoopCurrent(restoredRepeat === 'one');
+    audioEngine.setRepeatMode(restoredRepeat);
     audioEngine.setGaplessPlayback(settings.gaplessPlayback);
     audioEngine.setCrossfadeSeconds(settings.crossfadeSeconds);
+    audioEngine.warmUp?.();
 
     audioEngine.setCallbacks({
       onStatusUpdate: (status) => {
@@ -200,18 +193,40 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
           get().persistPlaybackState();
         }
       },
+      onTrackChanged: (newIndex) => {
+        const { queue, currentIndex } = get();
+        if (newIndex < 0 || newIndex >= queue.length || newIndex === currentIndex) {
+          return;
+        }
+        const nextSong = queue[newIndex]!;
+        if (useSleepTimerStore.getState().consumeEndOfTrackIfActive()) {
+          set({
+            currentIndex: newIndex,
+            currentSong: nextSong,
+            position: 0,
+            duration: nextSong.duration,
+          });
+          get().pause();
+          return;
+        }
+
+        set({
+          currentIndex: newIndex,
+          currentSong: nextSong,
+          position: 0,
+          duration: nextSong.duration,
+          error: null,
+        });
+        useLibraryStore.getState().recordSongPlayed(nextSong.id);
+        get().persistPlaybackState();
+      },
       onTrackFinished: () => {
         if (useSleepTimerStore.getState().consumeEndOfTrackIfActive()) {
           get().pause();
           return;
         }
-        void get().nextTrack(true, false);
-      },
-      onCrossfadeNeeded: () => {
-        if (useSleepTimerStore.getState().mode === 'end-of-track') {
-          return;
-        }
-        void get().nextTrack(true, true);
+        set({ isPlaying: false });
+        get().persistPlaybackState();
       },
       onExternalPause: () => {
         set({ isPlaying: false });
@@ -222,13 +237,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       },
     });
 
-    if (restoredSong) {
-      void audioEngine.loadAndPlay(restoredSong, false, restoredPosition);
-      preloadUpcomingTrack({
-        queue: restoredQueue,
-        currentIndex: restoredIndex,
-        repeatMode: restoredRepeat,
-      });
+    if (restoredSong && restoredQueue.length > 0) {
+      audioEngine.hydrateQueue?.(restoredQueue, restoredIndex, restoredPosition);
     }
   },
 
@@ -258,19 +268,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       queue: finalQueue,
       currentIndex: newIndex,
       currentSong: activeSong,
+      isPlaying: true,
       shuffle: shouldShuffle,
       position: 0,
       duration: activeSong.duration,
       error: null,
     });
 
+    await audioEngine.setQueueAndPlay(finalQueue, newIndex, true);
     useLibraryStore.getState().recordSongPlayed(activeSong.id);
     get().persistPlaybackState();
-    await audioEngine.loadAndPlay(activeSong, true);
-    preloadUpcomingTrack(get());
   },
 
-  playSongAtIndex: async (index, useCrossfade = false) => {
+  playSongAtIndex: async (index) => {
     const { queue } = get();
     if (index < 0 || index >= queue.length) return;
     const song = queue[index]!;
@@ -278,21 +288,15 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     set({
       currentIndex: index,
       currentSong: song,
+      isPlaying: true,
       position: 0,
       duration: song.duration,
       error: null,
     });
 
+    await audioEngine.skipToIndex(index, true);
     useLibraryStore.getState().recordSongPlayed(song.id);
     get().persistPlaybackState();
-
-    const crossfadeSec = useSettingsStore.getState().settings.crossfadeSeconds;
-    if (useCrossfade && crossfadeSec > 0) {
-      await audioEngine.crossfadeTo(song, crossfadeSec);
-    } else {
-      await audioEngine.loadAndPlay(song, true);
-    }
-    preloadUpcomingTrack(get());
   },
 
   togglePlayPause: () => {
@@ -374,6 +378,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         queue: shuffled,
         currentIndex: nextIndex >= 0 ? nextIndex : 0,
       });
+      audioEngine.syncQueueOrder(shuffled, nextIndex >= 0 ? nextIndex : 0);
     } else {
       const restored = originalQueue.length > 0 ? [...originalQueue] : [...queue];
       const nextIndex = currentSong ? restored.findIndex((s) => s.id === currentSong.id) : 0;
@@ -382,24 +387,22 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         queue: restored,
         currentIndex: nextIndex >= 0 ? nextIndex : 0,
       });
+      audioEngine.syncQueueOrder(restored, nextIndex >= 0 ? nextIndex : 0);
     }
     get().persistPlaybackState();
-    preloadUpcomingTrack(get());
   },
 
   cycleRepeat: () => {
     const next = cycleRepeatMode(get().repeatMode);
-    audioEngine.setLoopCurrent(next === 'one');
+    audioEngine.setRepeatMode(next);
     set({ repeatMode: next });
     get().persistPlaybackState();
-    preloadUpcomingTrack(get());
   },
 
   setRepeatMode: (mode) => {
-    audioEngine.setLoopCurrent(mode === 'one');
+    audioEngine.setRepeatMode(mode);
     set({ repeatMode: mode });
     get().persistPlaybackState();
-    preloadUpcomingTrack(get());
   },
 
   setPlaybackRate: (rate) => {
@@ -426,8 +429,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       queue: [...queue, song],
       originalQueue: [...originalQueue, song],
     });
+    audioEngine.addSongToQueue(song);
     get().persistPlaybackState();
-    preloadUpcomingTrack(get());
   },
 
   playNext: (song) => {
@@ -443,8 +446,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       queue: nextQueue,
       originalQueue: [...originalQueue, song],
     });
+    audioEngine.insertSongInQueue(song, insertIdx);
     get().persistPlaybackState();
-    preloadUpcomingTrack(get());
   },
 
   removeFromQueue: (index) => {
@@ -461,14 +464,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const nextIndex = Math.min(index, nextQueue.length - 1);
       const nextSong = nextQueue[nextIndex]!;
       set({ queue: nextQueue, currentIndex: nextIndex, currentSong: nextSong });
-      void audioEngine.loadAndPlay(nextSong, get().isPlaying);
+      audioEngine.removeSongFromQueue(index);
+      void audioEngine.skipToIndex(nextIndex, get().isPlaying);
     } else if (index < currentIndex) {
       set({ queue: nextQueue, currentIndex: currentIndex - 1 });
+      audioEngine.removeSongFromQueue(index);
     } else {
       set({ queue: nextQueue });
+      audioEngine.removeSongFromQueue(index);
     }
     get().persistPlaybackState();
-    preloadUpcomingTrack(get());
   },
 
   removeSongById: (songId) => {
@@ -488,8 +493,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const reordered = reorderList(queue, fromIndex, toIndex);
     const nextIndex = currentSong ? reordered.findIndex((s) => s.id === currentSong.id) : -1;
     set({ queue: reordered, currentIndex: nextIndex });
+    audioEngine.syncQueueOrder(reordered, nextIndex);
     get().persistPlaybackState();
-    preloadUpcomingTrack(get());
   },
 
   shuffleCurrentQueue: () => {
@@ -497,13 +502,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (queue.length <= 1) return;
     const shuffled = shuffleSongs(queue, currentSong?.id);
     const nextIndex = currentSong ? shuffled.findIndex((s) => s.id === currentSong.id) : 0;
+    const safeIdx = nextIndex >= 0 ? nextIndex : 0;
     set({
       shuffle: true,
       queue: shuffled,
-      currentIndex: nextIndex >= 0 ? nextIndex : 0,
+      currentIndex: safeIdx,
     });
+    audioEngine.syncQueueOrder(shuffled, safeIdx);
     get().persistPlaybackState();
-    preloadUpcomingTrack(get());
   },
 
   clearQueue: async () => {

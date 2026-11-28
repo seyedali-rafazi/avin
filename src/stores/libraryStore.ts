@@ -51,6 +51,7 @@ interface LibraryState {
   refreshLibrary: () => void;
   setSorting: (sortBy: SortField, sortOrder: SortOrder) => void;
   scanDevice: () => Promise<ScanResult>;
+  syncLibrarySilently: () => Promise<void>;
   importFiles: () => Promise<{ added: number; error?: string }>;
   toggleFavorite: (songId: string) => boolean;
   isFavorite: (songId: string) => boolean;
@@ -62,6 +63,8 @@ interface LibraryState {
   deleteSongs: (songIds: string[]) => void;
   clearError: () => void;
 }
+
+let isAutoSyncing = false;
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({
   songs: [],
@@ -156,6 +159,21 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       error: result.error ?? null,
     });
     return result;
+  },
+
+  syncLibrarySilently: async () => {
+    if (isAutoSyncing || get().isScanning) return;
+    isAutoSyncing = true;
+    try {
+      const result = await mediaScannerService.checkAndSyncChanges();
+      if (result && !result.error && (result.added > 0 || result.updated > 0 || result.removed > 0)) {
+        get().refreshLibrary();
+      }
+    } catch {
+      // Silent auto-sync errors are non-fatal
+    } finally {
+      isAutoSyncing = false;
+    }
   },
 
   importFiles: async () => {

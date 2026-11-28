@@ -22,6 +22,7 @@ export interface ExtractedAudioTags {
   year?: number | null;
   lyrics?: string;
   artworkUri?: string | null;
+  fileSize?: number;
 }
 
 const ID3V1_GENRES: readonly string[] = [
@@ -550,11 +551,15 @@ export function parseMp4Buffer(buf: Uint8Array): BinaryAudioTags {
   return tags;
 }
 
+let cachedArtworkDir: Directory | null = null;
+
 function getArtworkCacheDir(): Directory {
+  if (cachedArtworkDir) return cachedArtworkDir;
   const dir = new Directory(Paths.cache, 'artwork');
   if (!dir.exists) {
     dir.create({ intermediates: true, idempotent: true });
   }
+  cachedArtworkDir = dir;
   return dir;
 }
 
@@ -577,7 +582,7 @@ function saveArtworkToCache(fileUri: string, bytes: Uint8Array, mime?: string): 
 
 /**
  * Extracts real embedded tags (title, artist, album, genre, year, lyrics, artwork)
- * from an audio file URI by reading only the header/metadata portion.
+ * from an audio file URI using a single fast header read whenever possible.
  */
 export async function extractAudioTags(
   fileUri: string,
@@ -586,7 +591,9 @@ export async function extractAudioTags(
   if (IS_WEB || !fileUri) return {};
 
   const extractArtwork = options?.extractArtwork ?? true;
-  const MAX_HEADER_BYTES = 512 * 1024; // 512 KB covers almost all ID3v2/FLAC/M4A metadata + artwork
+  const INITIAL_CHUNK_BYTES = 64 * 1024; // 64 KB handles most ID3v2 headers in a single I/O call
+  const MAX_ID3_BYTES = 1024 * 1024; // 1 MB max ID3v2 + cover art
+  const MAX_CONTAINER_BYTES = 256 * 1024; // 256 KB for FLAC / M4A headers
 
   let handle: ReturnType<File['open']> | null = null;
   try {
@@ -595,20 +602,30 @@ export async function extractAudioTags(
 
     handle = file.open(FileMode.ReadOnly);
     const totalSize = handle.size ?? 0;
-    if (totalSize <= 16) return {};
+    if (totalSize <= 16) return { fileSize: totalSize };
 
-    const probeBytes = await handle.readBytes(Math.min(16, totalSize));
+    // Read first 64KB in a single native call (avoids probe + seek + re-read overhead)
+    const firstChunkLen = Math.min(INITIAL_CHUNK_BYTES, totalSize);
+    const firstChunk = await handle.readBytes(firstChunkLen);
     let parsed: BinaryAudioTags = {};
 
     // 1. Check ID3v2 ("ID3")
-    if (probeBytes[0] === 0x49 && probeBytes[1] === 0x44 && probeBytes[2] === 0x33) {
-      const tagSize = readSynchsafeInt(probeBytes, 6);
-      const readLen = Math.min(totalSize, Math.min(10 + tagSize, 2 * 1024 * 1024));
-      handle.offset = 0;
-      const fullTag = await handle.readBytes(readLen);
+    if (firstChunk[0] === 0x49 && firstChunk[1] === 0x44 && firstChunk[2] === 0x33) {
+      const tagSize = readSynchsafeInt(firstChunk, 6);
+      const neededLen = Math.min(totalSize, Math.min(10 + tagSize, MAX_ID3_BYTES));
+
+      let fullTag = firstChunk;
+      if (neededLen > firstChunk.length) {
+        const extraBytes = await handle.readBytes(neededLen - firstChunk.length);
+        const merged = new Uint8Array(firstChunk.length + extraBytes.length);
+        merged.set(firstChunk, 0);
+        merged.set(extraBytes, firstChunk.length);
+        fullTag = merged;
+      }
+
       parsed = parseId3v2Buffer(fullTag);
 
-      // Fallback to ID3v1 tail if title/artist missing
+      // Fallback to ID3v1 tail only if title/artist missing
       if ((!parsed.title || !parsed.artist) && totalSize >= 128) {
         handle.offset = totalSize - 128;
         const tail = await handle.readBytes(128);
@@ -626,28 +643,42 @@ export async function extractAudioTags(
     }
     // 2. Check FLAC ("fLaC")
     else if (
-      probeBytes[0] === 0x66 &&
-      probeBytes[1] === 0x4c &&
-      probeBytes[2] === 0x61 &&
-      probeBytes[3] === 0x43
+      firstChunk[0] === 0x66 &&
+      firstChunk[1] === 0x4c &&
+      firstChunk[2] === 0x61 &&
+      firstChunk[3] === 0x43
     ) {
-      handle.offset = 0;
-      const headerBuf = await handle.readBytes(Math.min(totalSize, MAX_HEADER_BYTES));
+      let headerBuf = firstChunk;
+      const targetLen = Math.min(totalSize, MAX_CONTAINER_BYTES);
+      if (targetLen > firstChunk.length) {
+        const extraBytes = await handle.readBytes(targetLen - firstChunk.length);
+        const merged = new Uint8Array(firstChunk.length + extraBytes.length);
+        merged.set(firstChunk, 0);
+        merged.set(extraBytes, firstChunk.length);
+        headerBuf = merged;
+      }
       parsed = parseFlacBuffer(headerBuf);
     }
     // 3. Check MP4 / M4A ("ftyp" at offset 4)
     else if (
-      probeBytes[4] === 0x66 &&
-      probeBytes[5] === 0x74 &&
-      probeBytes[6] === 0x79 &&
-      probeBytes[7] === 0x70
+      firstChunk[4] === 0x66 &&
+      firstChunk[5] === 0x74 &&
+      firstChunk[6] === 0x79 &&
+      firstChunk[7] === 0x70
     ) {
-      handle.offset = 0;
-      const headBuf = await handle.readBytes(Math.min(totalSize, MAX_HEADER_BYTES));
+      let headBuf = firstChunk;
+      const targetLen = Math.min(totalSize, MAX_CONTAINER_BYTES);
+      if (targetLen > firstChunk.length) {
+        const extraBytes = await handle.readBytes(targetLen - firstChunk.length);
+        const merged = new Uint8Array(firstChunk.length + extraBytes.length);
+        merged.set(firstChunk, 0);
+        merged.set(extraBytes, firstChunk.length);
+        headBuf = merged;
+      }
       parsed = parseMp4Buffer(headBuf);
       // Some M4A files place 'moov' at the end of the file
-      if (!parsed.title && !parsed.artist && totalSize > MAX_HEADER_BYTES) {
-        const tailSize = Math.min(totalSize, MAX_HEADER_BYTES);
+      if (!parsed.title && !parsed.artist && totalSize > MAX_CONTAINER_BYTES) {
+        const tailSize = Math.min(totalSize, MAX_CONTAINER_BYTES);
         handle.offset = totalSize - tailSize;
         const tailBuf = await handle.readBytes(tailSize);
         const tailParsed = parseMp4Buffer(tailBuf);
@@ -674,6 +705,7 @@ export async function extractAudioTags(
       year: parsed.year ?? null,
       lyrics: parsed.lyrics,
       artworkUri,
+      fileSize: totalSize,
     };
   } catch {
     return {};

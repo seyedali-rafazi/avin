@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Share, StyleSheet, Text, View } from 'react-native';
 import {
   BellRing,
@@ -32,48 +32,34 @@ interface SongOptionsSheetProps {
   onRemoveFromPlaylist?: () => void;
 }
 
+type SubModalTarget = 'playlist' | 'editor' | 'info';
+
+interface SubModalState {
+  song: Song;
+  target: SubModalTarget;
+  open: boolean;
+}
+
 export function SongOptionsSheet({
   song,
   visible,
   onClose,
   onRemoveFromPlaylist,
 }: SongOptionsSheetProps) {
-  const [activeSong, setActiveSong] = useState<Song | null>(song);
-  const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
-  const [showEditor, setShowEditor] = useState(false);
-  const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [subModal, setSubModal] = useState<SubModalState | null>(null);
 
   useEffect(() => {
-    if (song) {
-      setActiveSong(song);
-    }
-  }, [song]);
+    if (!subModal || subModal.open) return;
+    const timer = setTimeout(() => {
+      setSubModal((prev) => (prev ? { ...prev, open: true } : null));
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [subModal]);
 
-  useEffect(() => {
-    if (visible) {
-      if (pendingTimerRef.current) {
-        clearTimeout(pendingTimerRef.current);
-        pendingTimerRef.current = null;
-      }
-      setShowPlaylistPicker(false);
-      setShowInfo(false);
-      setShowEditor(false);
-    }
-  }, [visible]);
-
-  useEffect(() => {
-    return () => {
-      if (pendingTimerRef.current) {
-        clearTimeout(pendingTimerRef.current);
-      }
-    };
-  }, []);
-
-  const targetSongBase = song ?? activeSong;
+  const activeBaseSong = song ?? subModal?.song ?? null;
   const targetSong = useLibraryStore((s) =>
-    targetSongBase
-      ? (s.songs.find((item) => item.id === targetSongBase.id) ?? targetSongBase)
+    activeBaseSong
+      ? (s.songs.find((item) => item.id === activeBaseSong.id) ?? activeBaseSong)
       : null
   );
 
@@ -89,22 +75,6 @@ export function SongOptionsSheet({
   const deleteSongFromDevice = useLibraryStore((s) => s.deleteSongFromDevice);
 
   if (!targetSong) return null;
-
-  const openSubModal = (target: 'playlist' | 'editor' | 'info') => {
-    if (pendingTimerRef.current) {
-      clearTimeout(pendingTimerRef.current);
-    }
-    pendingTimerRef.current = setTimeout(() => {
-      pendingTimerRef.current = null;
-      if (target === 'playlist') {
-        setShowPlaylistPicker(true);
-      } else if (target === 'editor') {
-        setShowEditor(true);
-      } else {
-        setShowInfo(true);
-      }
-    }, 180);
-  };
 
   const artistName = localizeMetadata(targetSong.artist, 'هنرمند ناشناس');
   const albumName = localizeMetadata(targetSong.album, 'آلبوم ناشناس');
@@ -147,6 +117,10 @@ export function SongOptionsSheet({
         },
       ]
     );
+  };
+
+  const openSubModal = (target: SubModalTarget) => {
+    setSubModal({ song: targetSong, target, open: false });
   };
 
   const options: SheetOption[] = [
@@ -196,23 +170,23 @@ export function SongOptionsSheet({
       icon: <Info size={19} color={Colors.textPrimary} />,
       onPress: () => openSubModal('info'),
     },
+    onRemoveFromPlaylist
+      ? {
+          label: 'حذف از پلی‌لیست',
+          icon: <Trash2 size={19} color={Colors.danger} />,
+          destructive: true,
+          onPress: onRemoveFromPlaylist,
+        }
+      : {
+          label: 'حذف آهنگ',
+          icon: <Trash2 size={19} color={Colors.danger} />,
+          destructive: true,
+          onPress: handleDeleteSong,
+        },
   ];
 
-  if (onRemoveFromPlaylist) {
-    options.push({
-      label: 'حذف از پلی‌لیست',
-      icon: <Trash2 size={19} color={Colors.danger} />,
-      destructive: true,
-      onPress: onRemoveFromPlaylist,
-    });
-  } else {
-    options.push({
-      label: 'حذف آهنگ',
-      icon: <Trash2 size={19} color={Colors.danger} />,
-      destructive: true,
-      onPress: handleDeleteSong,
-    });
-  }
+  const isSubOpen = (target: SubModalTarget) =>
+    !visible && Boolean(subModal?.open && subModal.target === target);
 
   return (
     <>
@@ -225,20 +199,20 @@ export function SongOptionsSheet({
       />
 
       <AddToPlaylistSheet
-        visible={showPlaylistPicker}
+        visible={isSubOpen('playlist')}
         songIds={[targetSong.id]}
-        onClose={() => setShowPlaylistPicker(false)}
+        onClose={() => setSubModal(null)}
       />
 
       <EditSongModal
         song={targetSong}
-        visible={showEditor}
-        onClose={() => setShowEditor(false)}
+        visible={isSubOpen('editor')}
+        onClose={() => setSubModal(null)}
       />
 
       <BottomSheet
-        visible={showInfo}
-        onClose={() => setShowInfo(false)}
+        visible={isSubOpen('info')}
+        onClose={() => setSubModal(null)}
         title="مشخصات آهنگ"
       >
         <View style={styles.infoBlock}>

@@ -368,7 +368,7 @@ export default function LibraryScreen() {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingBottom: Spacing.xxl,
+    paddingBottom: 110,
   },
   scrollWithSelectionBar: {
     paddingBottom: 150,

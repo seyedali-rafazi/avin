@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Heart, Play, Shuffle } from 'lucide-react-native';
 import {
@@ -35,6 +35,48 @@ export default function FavoritesScreen() {
   );
 
   const selection = useSongSelection(sortedFavorites);
+  const currentSongId = currentSong?.id ?? null;
+
+  const { isSelectionMode, toggleSelect, enterSelection } = selection;
+  const keyExtractor = useCallback((item: Song) => item.id, []);
+  const handleSongPress = useCallback(
+    (song: Song, index: number) => {
+      if (isSelectionMode) {
+        toggleSelect(song.id);
+      } else {
+        void playQueue(sortedFavorites, index, false);
+      }
+    },
+    [isSelectionMode, toggleSelect, playQueue, sortedFavorites]
+  );
+  const handleSongLongPress = useCallback(
+    (song: Song) => enterSelection(song.id),
+    [enterSelection]
+  );
+  const handleSongMore = useCallback((song: Song) => setSelectedSong(song), []);
+  const renderItem = useCallback(
+    ({ item, index }: { item: Song; index: number }) => (
+      <SongRow
+        song={item}
+        index={index}
+        showAlbum
+        isActive={currentSongId === item.id}
+        selectionMode={selection.isSelectionMode}
+        isSelected={selection.selectedIds.has(item.id)}
+        onPressItem={handleSongPress}
+        onLongPressItem={handleSongLongPress}
+        onMorePressItem={handleSongMore}
+      />
+    ),
+    [
+      currentSongId,
+      selection.isSelectionMode,
+      selection.selectedIds,
+      handleSongPress,
+      handleSongLongPress,
+      handleSongMore,
+    ]
+  );
 
   return (
     <ScreenContainer>
@@ -61,7 +103,7 @@ export default function FavoritesScreen() {
       ) : (
         <FlatList
           data={sortedFavorites}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           ListHeaderComponent={
             <View style={styles.actionsRow}>
               <PrimaryButton
@@ -79,30 +121,12 @@ export default function FavoritesScreen() {
               </Pressable>
             </View>
           }
-          renderItem={({ item, index }) => (
-            <SongRow
-              song={item}
-              showAlbum
-              isActive={currentSong?.id === item.id}
-              selectionMode={selection.isSelectionMode}
-              isSelected={selection.selectedIds.has(item.id)}
-              onPress={() => {
-                if (selection.isSelectionMode) {
-                  selection.toggleSelect(item.id);
-                } else {
-                  void playQueue(sortedFavorites, index, false);
-                }
-              }}
-              onLongPress={() => selection.enterSelection(item.id)}
-              onMorePress={() => setSelectedSong(item)}
-            />
-          )}
-          contentContainerStyle={[
-            styles.listContent,
-            selection.isSelectionMode && styles.listWithSelectionBar,
-          ]}
-          initialNumToRender={16}
-          maxToRenderPerBatch={20}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          removeClippedSubviews={false}
+          initialNumToRender={15}
+          maxToRenderPerBatch={12}
+          updateCellsBatchingPeriod={50}
           windowSize={9}
         />
       )}
@@ -169,9 +193,6 @@ const styles = StyleSheet.create({
     opacity: 0.78,
   },
   listContent: {
-    paddingBottom: Spacing.xxl,
-  },
-  listWithSelectionBar: {
     paddingBottom: 150,
   },
 });

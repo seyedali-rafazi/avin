@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -24,28 +24,25 @@ interface EditSongModalProps {
 }
 
 export function EditSongModal({ song, visible, onClose }: EditSongModalProps) {
+  if (!song) return null;
+
+  return (
+    <AppModal visible={visible} onClose={onClose} title="ویرایش مشخصات و کاور">
+      {visible ? <EditSongForm key={song.id} song={song} onClose={onClose} /> : null}
+    </AppModal>
+  );
+}
+
+function EditSongForm({ song, onClose }: { song: Song; onClose: () => void }) {
   const updateSongMetadata = useLibraryStore((s) => s.updateSongMetadata);
   const syncUpdatedSong = usePlayerStore((s) => s.syncUpdatedSong);
 
-  const [title, setTitle] = useState('');
-  const [artist, setArtist] = useState('');
-  const [album, setAlbum] = useState('');
-  const [genre, setGenre] = useState('');
-  const [year, setYear] = useState('');
-  const [artworkUri, setArtworkUri] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (song && visible) {
-      setTitle(song.title);
-      setArtist(song.artist);
-      setAlbum(song.album);
-      setGenre(song.genre);
-      setYear(song.year ? String(song.year) : '');
-      setArtworkUri(song.artworkUri);
-    }
-  }, [song, visible]);
-
-  if (!song) return null;
+  const [title, setTitle] = useState(song.title);
+  const [artist, setArtist] = useState(song.artist);
+  const [album, setAlbum] = useState(song.album);
+  const [genre, setGenre] = useState(song.genre);
+  const [year, setYear] = useState(song.year ? String(song.year) : '');
+  const [artworkUri, setArtworkUri] = useState<string | null>(song.artworkUri);
 
   const handlePickArtwork = async () => {
     const uri = await fileActionsService.pickCustomArtwork(song.id);
@@ -83,7 +80,7 @@ export function EditSongModal({ song, visible, onClose }: EditSongModalProps) {
   };
 
   return (
-    <AppModal visible={visible} onClose={onClose} title="ویرایش مشخصات و کاور">
+    <>
       <ScrollView
         showsVerticalScrollIndicator
         nestedScrollEnabled
@@ -135,7 +132,7 @@ export function EditSongModal({ song, visible, onClose }: EditSongModalProps) {
         </Pressable>
         <PrimaryButton label="ذخیره تغییرات" size="sm" onPress={handleSave} />
       </View>
-    </AppModal>
+    </>
   );
 }
 
@@ -175,10 +172,13 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 0,
     flexShrink: 1,
+    direction: 'rtl',
   },
   scrollContent: {
     gap: Spacing.sm,
     paddingBottom: Spacing.md,
+    direction: 'rtl',
+    alignItems: 'stretch',
   },
   artworkRow: {
     flexDirection: 'row',
@@ -223,15 +223,21 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
   fieldWrap: {
+    width: '100%',
     gap: 4,
+    direction: 'rtl',
+    alignItems: 'stretch',
   },
   fieldLabel: {
+    width: '100%',
     fontFamily: Fonts.medium,
     fontSize: 12,
     color: Colors.textSecondary,
     textAlign: 'right',
+    writingDirection: 'rtl',
   },
   input: {
+    width: '100%',
     backgroundColor: Colors.surfaceElevated,
     borderRadius: Radii.md,
     paddingHorizontal: Spacing.md,
@@ -241,6 +247,7 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     borderWidth: 1,
     borderColor: Colors.border,
+    textAlign: 'right',
     writingDirection: 'rtl',
   },
   modalActions: {
